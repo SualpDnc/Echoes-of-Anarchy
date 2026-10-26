@@ -70,6 +70,7 @@ namespace Echoes.Player
         bool crouchToggled;
         float stepDistance;
         float peakFallSpeed;
+        float airTime;
         bool wasGrounded;
 
         float CurrentStride => IsCrouching ? crouchStride : Mathf.Lerp(walkStride, sprintStride, Mathf.InverseLerp(walkSpeed, sprintSpeed, HorizontalSpeed));
@@ -130,10 +131,12 @@ namespace Echoes.Player
 
             // Landing detection
             bool groundedNow = Controller.isGrounded;
-            if (!groundedNow) peakFallSpeed = Mathf.Max(peakFallSpeed, -velocity.y);
+            if (!groundedNow) { peakFallSpeed = Mathf.Max(peakFallSpeed, -velocity.y); airTime += dt; }
             if (groundedNow && !wasGrounded)
             {
-                if (peakFallSpeed > 2.5f) Landed?.Invoke(peakFallSpeed);
+                // Ignore one- or two-frame "airborne" blips on curbs and slopes; only real falls count as landings.
+                if (peakFallSpeed > 2.5f && airTime > 0.2f) Landed?.Invoke(peakFallSpeed);
+                airTime = 0f;
                 peakFallSpeed = 0f;
                 stepDistance = CurrentStride * 0.5f; // a landing reads as a step soon after
             }

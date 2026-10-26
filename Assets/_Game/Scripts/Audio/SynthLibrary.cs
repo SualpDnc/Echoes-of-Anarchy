@@ -9,14 +9,16 @@ namespace Echoes.Audio
         StepAsphalt, StepConcrete, StepMetal, StepWood, Land, Jump, Breath, FlashlightClick,
         AmbienceCity, Wind, Fire, Steam, LampBuzz, SignalTick,
         GunPistolFar, GunRifleFar, Scream, DogBark, CarAlarm, PoliceSiren, Explosion, Firework, GlassBreak,
-        PurgeSiren, EBSTone
+        PurgeSiren, EBSTone,
+        GunPistolNear, DryFire, MagOut, MagIn, SlideRack, ShellCasing, ImpactHard, ImpactMetal, ImpactFlesh, Whizz,
+        TensionHit, Heartbeat, BodyFall, BatSwing, BatHit, Bandage
     }
 
     /// <summary>
     /// Every sound in the game as a synthesis recipe. Recipes are pure functions of a seeded Random so they
     /// can be rendered in parallel at load time. Distant sounds have their street reverb and air absorption baked in.
     /// </summary>
-    public static class SynthLibrary
+    public static partial class SynthLibrary
     {
         public class Recipe
         {
@@ -55,6 +57,22 @@ namespace Echoes.Audio
                 new Recipe { id = SoundId.GlassBreak, variations = 3, render = GlassBreak },
                 new Recipe { id = SoundId.PurgeSiren, render = PurgeSiren },
                 new Recipe { id = SoundId.EBSTone, render = EBSTone },
+                new Recipe { id = SoundId.GunPistolNear, variations = 3, render = GunNear },
+                new Recipe { id = SoundId.DryFire, render = DryFire },
+                new Recipe { id = SoundId.MagOut, render = r => Mech(r, 0.18f, 1800f, 0.6f) },
+                new Recipe { id = SoundId.MagIn, render = r => Mech(r, 0.12f, 2400f, 1f) },
+                new Recipe { id = SoundId.SlideRack, render = SlideRack },
+                new Recipe { id = SoundId.ShellCasing, variations = 4, render = ShellCasing },
+                new Recipe { id = SoundId.ImpactHard, variations = 4, render = ImpactHard },
+                new Recipe { id = SoundId.ImpactMetal, variations = 3, render = ImpactMetal },
+                new Recipe { id = SoundId.ImpactFlesh, variations = 3, render = ImpactFlesh },
+                new Recipe { id = SoundId.Whizz, variations = 3, render = Whizz },
+                new Recipe { id = SoundId.TensionHit, render = TensionHit },
+                new Recipe { id = SoundId.Heartbeat, render = Heartbeat },
+                new Recipe { id = SoundId.BodyFall, variations = 2, render = BodyFall },
+                new Recipe { id = SoundId.BatSwing, render = BatSwing },
+                new Recipe { id = SoundId.BatHit, variations = 2, render = BatHit },
+                new Recipe { id = SoundId.Bandage, render = Bandage },
             };
         }
 

@@ -31,6 +31,8 @@ namespace Echoes.Rendering
         public float bloomIntensity = 1.1f;
         public float bloomThreshold = 0.85f;
 
+        public static BodycamVolume Instance { get; private set; }
+
         Volume volume;
         VolumeProfile profile;
         Vignette vig;
@@ -40,6 +42,7 @@ namespace Echoes.Rendering
 
         void OnEnable()
         {
+            Instance = this;
             volume = GetComponent<Volume>();
             volume.isGlobal = true;
             volume.priority = 10f;

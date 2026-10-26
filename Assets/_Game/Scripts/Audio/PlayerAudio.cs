@@ -68,6 +68,8 @@ namespace Echoes.Audio
             lastVariation = v;
             float vol = footstepVolume * Mathf.Lerp(0.25f, 1f, intensity);
             am.Play2D(id, vol, Random.Range(0.92f, 1.08f), v);
+            // Sprinting carries ~14 m, walking ~6 m, crouching barely 2 m.
+            Echoes.Combat.NoiseSystem.Emit(transform.position, Mathf.Lerp(1.5f, 14f, intensity * intensity), Echoes.Combat.NoiseKind.Footstep, gameObject, true);
         }
 
         void OnLanded(float impact)

@@ -48,8 +48,8 @@ A Purge-night action/story game for PC. Full game is about 60 minutes; the demo 
 | 1 | Foundation: input, FPS controller, bodycam rig, flashlight, post-FX, HUD | **Done**, tested by the owner |
 | 2 | World: texture synthesis, buildings, props, night sky, fire/smoke FX, reflection probes, NavMesh | **Done**, tested by the owner |
 | 3 | Audio: synthesized foley, ambience, distant Purge events, Purge siren, reverb zones | **Done**, tested by the owner |
-| 4 | Combat + AI: pistol (own synthesized gunshot), bottle throw, damage, ragdoll, NPC FSM (patrol/suspicious/search/attack/flee/surrender), sight + hearing perception on the NavMesh | Next |
-| 5 | Characters: procedural humanoid, procedural animation/IK, masks (LED smile, pig, angel) | |
+| 4 | Combat + AI: pistol (own synthesized gunshot), bottle throw, damage, ragdoll, NPC FSM (patrol/suspicious/search/attack/flee/surrender), sight + hearing perception on the NavMesh | **Code done**, awaiting the owner's test (test fights placed by `CreateTestEncounters`) |
+| 5 | Characters: upgrade the basic segmented humanoid from phase 4 (better body shapes, clothing detail, IK feet, more masks such as pig and angel, smoother animation) | |
 | 6 | Narrative: dialogue + EN/TR subtitles, Ledger, phone calls, demo sequences 1–5, GameClock-driven 19:00 siren | |
 | 7 | Polish: main menu (VHS style), tape transitions, settings, shader warm-up (avoids the cyan placeholder flash on first play), performance, build | |
 

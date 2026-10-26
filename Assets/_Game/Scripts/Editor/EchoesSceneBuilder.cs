@@ -6,7 +6,9 @@ using UnityEditor.SceneManagement;
 using UnityEngine;
 using UnityEngine.Rendering;
 using UnityEngine.Rendering.Universal;
+using Echoes.AI;
 using Echoes.Audio;
+using Echoes.Combat;
 using Echoes.Core;
 using Echoes.Player;
 using Echoes.Rendering;
@@ -43,6 +45,7 @@ namespace Echoes.EditorTools
             var info = DistrictGenerator.Generate(pal, fx, world.transform, 2034);
             CreatePlayer(info.playerSpawn, info.playerYaw);
             CreateReverbZones();
+            CreateTestEncounters();
 
             Directory.CreateDirectory(SceneDir);
             string path = SceneDir + "/HarlowDistrict.unity";
@@ -96,6 +99,24 @@ namespace Echoes.EditorTools
             audio.AddComponent<DistantEvents>();
             audio.AddComponent<PurgeSiren>();
             audio.AddComponent<AudioDevHotkeys>();
+        }
+
+        /// <summary>Phase 4 sandbox fights until the demo sequences (phase 6) place the real encounters.</summary>
+        static void CreateTestEncounters()
+        {
+            var root = new GameObject("TestEncounters").transform;
+            void Spawner(string name, Vector3 pos, Faction f, int count, float spread, float pistols, bool stationary, float patrol, int seed)
+            {
+                var s = new GameObject(name).AddComponent<NPCSpawner>();
+                s.transform.SetParent(root, false);
+                s.transform.position = pos;
+                s.faction = f; s.count = count; s.spread = spread; s.pistolChance = pistols;
+                s.stationary = stationary; s.patrolRadius = patrol; s.seed = seed;
+            }
+            Spawner("Looters_Barrel", new Vector3(-7f, 0.15f, -60f), Faction.Looter, 3, 2.5f, 0.35f, true, 4f, 11);
+            Spawner("Civilian_Doorway", new Vector3(9.3f, 0.15f, -31f), Faction.Civilian, 1, 0.5f, 0f, true, 2f, 12);
+            Spawner("Looters_Alley", new Vector3(27f, 0.15f, -30f), Faction.Looter, 2, 2f, 0.5f, false, 10f, 13);
+            Spawner("Smilers_Intersection", new Vector3(4f, 0f, 42f), Faction.Smiler, 2, 3f, 1f, false, 12f, 14);
         }
 
         /// <summary>Street-canyon reverb everywhere; tighter, slappier reverb in the alley.</summary>
@@ -165,6 +186,12 @@ namespace Echoes.EditorTools
             player.AddComponent<FPSController>();
             var rig = player.AddComponent<CameraRig>();
             player.AddComponent<PlayerAudio>();
+            player.AddComponent<Health>().maxHealth = 100f;
+            player.AddComponent<PlayerHealth>();
+            player.AddComponent<WeaponPistol>();
+            player.AddComponent<ThrowController>();
+            player.AddComponent<PlayerMelee>();
+            player.AddComponent<PlayerInteractor>();
 
             var pivot = new GameObject("CameraPivot").transform;
             pivot.SetParent(player.transform, false);

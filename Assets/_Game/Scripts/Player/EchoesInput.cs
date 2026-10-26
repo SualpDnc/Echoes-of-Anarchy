@@ -11,7 +11,7 @@ namespace Echoes.Player
     {
         InputActionMap map;
         InputAction move, look, lookStick, sprint, crouchToggle, crouchHold, jump, leanLeft, leanRight,
-                    interact, fire, aim, reload, throwItem, flashlight, pause;
+                    interact, fire, aim, reload, throwItem, flashlight, pause, holster, heal;
 
         public Vector2 Move { get; private set; }
         /// <summary>Look delta in degrees-equivalent units for this frame (mouse pixels or scaled stick).</summary>
@@ -29,6 +29,8 @@ namespace Echoes.Player
         public bool ThrowPressed => throwItem.WasPressedThisFrame();
         public bool FlashlightPressed => flashlight.WasPressedThisFrame();
         public bool PausePressed => pause.WasPressedThisFrame();
+        public bool HolsterPressed => holster.WasPressedThisFrame();
+        public bool HealPressed => heal.WasPressedThisFrame();
 
         public bool InputLocked { get; set; }
 
@@ -68,6 +70,11 @@ namespace Echoes.Player
             flashlight.AddBinding("<Gamepad>/dpad/up");
             pause = map.AddAction("Pause", InputActionType.Button, "<Keyboard>/escape");
             pause.AddBinding("<Gamepad>/start");
+            holster = map.AddAction("Holster", InputActionType.Button, "<Keyboard>/1");
+            holster.AddBinding("<Keyboard>/x");
+            holster.AddBinding("<Gamepad>/dpad/left");
+            heal = map.AddAction("Heal", InputActionType.Button, "<Keyboard>/h");
+            heal.AddBinding("<Gamepad>/dpad/down");
         }
 
         void OnEnable() => map.Enable();

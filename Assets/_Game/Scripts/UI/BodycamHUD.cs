@@ -128,5 +128,89 @@ namespace Echoes.UI
         }
 
         public void SetPrompt(string text) => promptText.text = text ?? "";
+
+        // ------------------------------------------------------------------ combat overlays
+
+        Text ammoText, centerText;
+        RawImage fadeImg;
+        float ammoUntil, centerUntil;
+
+        void EnsureCombatOverlays()
+        {
+            if (ammoText != null) return;
+            ammoText = MakeText("Ammo", 26, TextAnchor.LowerRight, new Vector2(1, 0), new Vector2(-48, 40), new Color(1f, 1f, 1f, 0.85f));
+            fadeImg = FullScreenRaw("Fade", Texture2D.whiteTexture, 0f);
+            fadeImg.color = new Color(0f, 0f, 0f, 0f);
+            centerText = MakeText("Center", 44, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), Vector2.zero, Color.white);
+            centerText.rectTransform.sizeDelta = new Vector2(1400, 120);
+        }
+
+        /// <summary>Ammo is only shown when checked (reload / R on a full mag) — Daniel counts, the HUD doesn't.</summary>
+        public void ShowAmmo(string text, float duration = 2.2f)
+        {
+            EnsureCombatOverlays();
+            ammoText.text = text;
+            ammoUntil = Time.time + duration;
+        }
+
+        public void SetFade(float alpha)
+        {
+            EnsureCombatOverlays();
+            fadeImg.color = new Color(0f, 0f, 0f, Mathf.Clamp01(alpha));
+        }
+
+        public void ShowCenter(string text, float duration)
+        {
+            EnsureCombatOverlays();
+            centerText.text = text;
+            centerUntil = Time.time + duration;
+            centerText.transform.SetAsLastSibling();
+        }
+
+        // ------------------------------------------------------------------ vitals
+
+        RectTransform vitalsFill;
+        RawImage vitalsFillImg;
+        Text vitalsLabel;
+
+        void EnsureVitals()
+        {
+            if (vitalsFill != null) return;
+            vitalsLabel = MakeText("VitalsLabel", 22, TextAnchor.LowerLeft, new Vector2(0, 0), new Vector2(48, 62), new Color(1f, 1f, 1f, 0.85f));
+            var bg = FullScreenRaw("VitalsBack", Texture2D.whiteTexture, 0.35f);
+            bg.color = new Color(0f, 0f, 0f, 0.45f);
+            var brt = bg.rectTransform;
+            brt.anchorMin = brt.anchorMax = brt.pivot = new Vector2(0f, 0f);
+            brt.anchoredPosition = new Vector2(48f, 40f);
+            brt.sizeDelta = new Vector2(280f, 14f);
+            vitalsFillImg = FullScreenRaw("VitalsFill", Texture2D.whiteTexture, 1f);
+            vitalsFill = vitalsFillImg.rectTransform;
+            vitalsFill.SetParent(brt, false);
+            vitalsFill.anchorMin = new Vector2(0f, 0f);
+            vitalsFill.anchorMax = new Vector2(1f, 1f);
+            vitalsFill.pivot = new Vector2(0f, 0.5f);
+            vitalsFill.offsetMin = new Vector2(2f, 2f);
+            vitalsFill.offsetMax = new Vector2(-2f, -2f);
+
+        }
+
+        /// <summary>Health 0..1 and med-kit count, bottom-left like a vitals monitor clipped to the vest.</summary>
+        public void SetVitals(float fraction, int medKits)
+        {
+            EnsureVitals();
+            fraction = Mathf.Clamp01(fraction);
+            vitalsFill.anchorMax = new Vector2(fraction, 1f);
+            Color c = fraction > 0.5f ? new Color(0.9f, 0.95f, 0.9f) : Color.Lerp(new Color(1f, 0.15f, 0.1f), new Color(1f, 0.8f, 0.3f), (fraction - 0.15f) / 0.35f);
+            if (fraction < 0.3f) c.a = 0.55f + 0.45f * Mathf.Abs(Mathf.Sin(Time.time * 5f)); // pulse when critical
+            vitalsFillImg.color = c;
+            vitalsLabel.text = $"VITALS {Mathf.CeilToInt(fraction * 100f),3}   MED x{medKits}";
+        }
+
+        void LateUpdate()
+        {
+            if (ammoText == null) return;
+            if (ammoText.text.Length > 0 && Time.time > ammoUntil) ammoText.text = "";
+            if (centerText.text.Length > 0 && Time.time > centerUntil) centerText.text = "";
+        }
     }
 }

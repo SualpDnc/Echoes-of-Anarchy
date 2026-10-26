@@ -11,6 +11,7 @@ namespace Echoes.World
     {
         void Awake()
         {
+            Echoes.AI.LightExposure.Collect(transform); // stealth needs every world light; this is the world root
             var surface = GetComponent<NavMeshSurface>();
             surface.collectObjects = CollectObjects.Children;
             surface.useGeometry = NavMeshCollectGeometry.PhysicsColliders;
