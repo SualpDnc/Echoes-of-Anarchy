@@ -29,6 +29,21 @@ namespace Echoes.Rendering
             return cache[key] = m;
         }
 
+        /// <summary>Lit material with a synthesized fabric detail map (albedo multiplier + normal), tiled for metre UVs.</summary>
+        public static Material Fabric(Color color, float smoothness, Fabric fabric, float metallic = 0f, Color? emission = null)
+        {
+            string key = $"F{fabric}{color}{smoothness}{metallic}{emission}";
+            if (cache.TryGetValue(key, out var m) && m != null) return m;
+            m = new Material(Lit(color, smoothness, metallic, emission)) { name = "RT_" + fabric, hideFlags = HideFlags.DontSave };
+            float tiling = 1f / ClothTextures.TileSize(fabric);
+            m.SetTexture("_BaseMap", ClothTextures.Albedo(fabric));
+            m.SetTextureScale("_BaseMap", new Vector2(tiling, tiling));
+            m.SetTexture("_BumpMap", ClothTextures.Normal(fabric));
+            m.SetFloat("_BumpScale", ClothTextures.NormalScale(fabric));
+            m.EnableKeyword("_NORMALMAP");
+            return cache[key] = m;
+        }
+
         /// <summary>Unlit FX material on the Echoes/Particle shader.</summary>
         public static Material Particle(string name, Texture tex, bool additive, float intensity, float softDistance = 0.3f)
         {

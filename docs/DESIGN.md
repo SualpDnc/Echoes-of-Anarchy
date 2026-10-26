@@ -15,6 +15,14 @@ A Purge-night action/story game for PC. Full game is about 60 minutes; the demo 
 | Morality | A hidden **Ledger** records actions caught on the bodycam and decides 3 endings |
 | Visual taste | The owner wants a **clean image**: keep grain, scanlines and chromatic aberration very low, and keep the streets readable rather than pitch dark |
 
+## Character look (phase 5, proposed by the agent; the owner can still change it)
+| Faction | Look | Why |
+|---|---|---|
+| Smilers | Black suits, white gloves, glossy black full-head mask with the LED grin; the **tie matches the LED colour** | A "uniform" for the stream; the grin stays the signature image |
+| Looters | Hoodies or work jackets, jeans/cargo/sweatpants. Head: hood + bandana (most), **rubber pig mask**, **porcelain angel face under a hood with a faintly glowing wire halo**, or bare face with a beanie/cap | Disorganised Purge crowd; pig and angel were requested masks. The halo glows a little so it reads at night, like the LEDs |
+| Civilians | T-shirts, sweaters or open jackets; visible faces, hair (short/long), some caps | Readable as non-threats |
+Bodies vary in height, bulk, belly and male/female proportions.
+
 ## Story
 - **Frame:** 22 March 2034, 07:40. Detective Hale reviews Daniel's bodycam footage ("EXHIBIT 14"). Chapter transitions are tape rewind/fast-forward with the detective's notes.
 - **Factions:**
@@ -48,8 +56,8 @@ A Purge-night action/story game for PC. Full game is about 60 minutes; the demo 
 | 1 | Foundation: input, FPS controller, bodycam rig, flashlight, post-FX, HUD | **Done**, tested by the owner |
 | 2 | World: texture synthesis, buildings, props, night sky, fire/smoke FX, reflection probes, NavMesh | **Done**, tested by the owner |
 | 3 | Audio: synthesized foley, ambience, distant Purge events, Purge siren, reverb zones | **Done**, tested by the owner |
-| 4 | Combat + AI: pistol (own synthesized gunshot), bottle throw, damage, ragdoll, NPC FSM (patrol/suspicious/search/attack/flee/surrender), sight + hearing perception on the NavMesh | **Code done**, awaiting the owner's test (test fights placed by `CreateTestEncounters`) |
-| 5 | Characters: upgrade the basic segmented humanoid from phase 4 (better body shapes, clothing detail, IK feet, more masks such as pig and angel, smoother animation) | |
+| 4 | Combat + AI: pistol (own synthesized gunshot), bottle throw, damage, ragdoll, NPC FSM (patrol/suspicious/search/attack/flee/surrender), sight + hearing perception on the NavMesh | **Done**, committed by the owner (the melee animation and jitter fix were not explicitly confirmed) |
+| 5 | Characters: upgrade the basic segmented humanoid from phase 4 (better body shapes, clothing detail, IK feet, more masks such as pig and angel, smoother animation) | **Done**, tested by the owner (liked it) |
 | 6 | Narrative: dialogue + EN/TR subtitles, Ledger, phone calls, demo sequences 1–5, GameClock-driven 19:00 siren | |
 | 7 | Polish: main menu (VHS style), tape transitions, settings, shader warm-up (avoids the cyan placeholder flash on first play), performance, build | |
 

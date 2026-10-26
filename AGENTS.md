@@ -7,7 +7,7 @@ it records the story, the decisions already made with the owner, and the phase p
 - **Talk to the owner in Turkish.** The game's own text is English, with Turkish subtitles.
 - Work one phase at a time. At the end of a phase, explain how to test it (menu path, keys) and wait for the owner to test it before starting the next one.
 - Do not overturn decisions already in `docs/DESIGN.md`. If one needs to change, ask.
-- Owner feedback so far: no on-screen threat-direction arcs (removed by request); health must be visible (VITALS bar); every melee strike needs a visible animation.
+- Owner feedback so far: no on-screen threat-direction arcs (removed by request); health must be visible (VITALS bar); every melee strike needs a visible animation. The camera must not tremble or bob too much; keep the handheld/breathing noise subtle (see the camera jitter entry in `docs/CHANGELOG.md`). The owner liked the phase 5 characters.
 - The owner wants a **clean image**: no heavy grain, scanlines or chromatic aberration, and streets that are readable rather than very dark.
 
 ## Handoff rule: leave the project ready for the next agent
@@ -38,11 +38,11 @@ No imported models, textures or audio. New content goes into generators (C#), sh
 |---|---|
 | Core | `GameClock` (in-game time, starts 2034-03-21 18:52) |
 | Player | `EchoesInput` (all bindings in code), `FPSController` (acceleration, stamina, crouch, step cycle and events), `CameraRig` (chest bodycam: bob, lean, recoil `AddRecoil`, shake `AddTrauma`), `Flashlight` |
-| Rendering | `BodycamVolume` (post-FX profile built in code; `SetStress` and `SetExposureOffset` hooks), `ProcTextures`, `LightFlicker` (Fire / FailingLamp / Neon / Blink), `FireFX` (particles) |
+| Rendering | `BodycamVolume` (post-FX profile built in code; `SetStress` and `SetExposureOffset` hooks), `ProcTextures`, `ClothTextures` (runtime fabric detail maps: knit, denim, wool, cotton, leather, rubber, skin, porcelain, hair), `RuntimeMaterials` (`Lit`, `Fabric`, `Particle`), `LightFlicker` (Fire / FailingLamp / Neon / Blink), `FireFX` (particles) |
 | World | `TileNoise`, `TextureSynth` (PBR recipes), `MeshBuilder`, `BuildingGenerator`, `PropFactory`, `DistrictGenerator` (layout: avenue at x≈0, cross street at z=30, alley at x 25..29), `Palette`, `RuntimeNavMesh` (bakes on Awake) |
 | Audio | `DSP`, `SynthLibrary` (all sound recipes, `SoundId`), `AudioManager` (renders the bank in parallel at load; `PlayAt` applies speed-of-sound delay, air absorption and occlusion; `Play2D`), `ProceduralAudioSource` (looping 3D emitter), `DistantEvents`, `PurgeSiren`, `PlayerAudio`, `AudioDevHotkeys` (F9 siren, F10 event, F11 toggle) |
 | Combat | `Health`/`DamageInfo`, `Hitbox` (per-bone multiplier), `NoiseSystem` (AI hearing bus), `SurfaceUtil` (material under a hit; `RaycastIgnoring`), `ImpactFX` (pooled decals and bursts), `WeaponModels` (pistol, nitrile-gloved hands, bottle, bat), `WeaponPistol` (viewmodel, recoil, reloads), `ThrowController`/`Bottle`, `PlayerHealth` (stress, heartbeat, med kits, death), `Interactable`/`PlayerInteractor` (F key: uses an interactable, otherwise a melee strike via `PlayerMelee` — pistol-whip or gloved punch with its own viewmodel), `AmmoPickup` (glows), `PlayerCollision` (loose rigidbodies ignore the player capsule to prevent camera jitter) |
-| AI | `HumanoidBuilder` (16-bone segmented body, outfits, hitboxes) + `MaskFactory`, `HumanoidRig` (bones, ragdoll), `ProcAnimator` (procedural walk/run plus poses Aim/HandsUp/Kneel/Cower/Melee), `Perception` (awareness 0..1.2 from sight and hearing; uses `LightExposure`), `NPCBrain` (FSM, morale, Ledger hooks), `NPCSpawner` (builds NPCs at runtime), `SpareInteractable` |
+| AI | `HumanoidBuilder` (16 bones, one skinned body mesh, hitboxes; skinning bands by rest height), `CharacterLook` (proportions, garments, head/mask, materials; `Pick` then `Dress`), `BodyProfile` (superellipse cross-sections + garment `Layer`s), `SkinnedBodyBuilder` (tubes, conforming patches, sculpted ellipsoids, torus, box; bone weights), `OutfitDetails` (pockets, drawstrings, zips, lapels, shirt + tie), `MaskFactory` (sculpted skull, faces, hair/hats, LED grin, hood + bandana, pig, angel + halo), `HumanoidRig` (bones, ragdoll), `ProcAnimator` (layered: gait-phase locomotion, idle breathing/weight shift, leans, per-bone pose blending Aim/HandsUp/Kneel/Cower/Melee, head look, two-bone foot IK), `CharacterLineup` (dev: F8 lineup of every look, F7 cycles idle/walk/run/aim/hands up/kneel/cower/melee), `Perception` (awareness 0..1.2 from sight and hearing; uses `LightExposure`), `NPCBrain` (FSM, morale, Ledger hooks), `NPCSpawner` (builds NPCs at runtime), `SpareInteractable` |
 | Core | also `Ledger` (hidden moral record → endings) |
 | UI | `BodycamHUD` (REC, timestamp, overlays, `ShowSubtitle`, `SetPrompt`, `ShowAmmo`, `SetFade`, `ShowCenter`) |
 | Editor | `EchoesSceneBuilder`, `MaterialLibrary` |
@@ -59,6 +59,12 @@ No imported models, textures or audio. New content goes into generators (C#), sh
 - Clips and some textures exist only at runtime, so components store a `SoundId` or regenerate in `Awake`/`OnEnable`.
 - On the very first Play after a rebuild, the screen can show cyan for a few seconds. This is the editor's async shader compilation, not a bug (a shader warm-up is planned for phase 7).
 - Keep shadowed lights scarce (one street lamp in three; barrel fires cast no shadows). Point-light shadows cost 6 renders each.
+- Use `FPSController.IsGrounded` (debounced) rather than `CharacterController.isGrounded` (flickers for single frames) for anything gameplay- or camera-related. The step cycle (`StepIndex + StepPhase`) is continuous; don't recompute it from the current stride.
+- **Characters are authored at 1.0 scale in rest space** (root at the feet, +Z forward, head bone at y 1.60) and scaled by `CharacterLook.height` at the end (`ScaleVertices`). Skinning bands use rest heights (`NeckY`, `ElbowY`, `KneeY`... in `HumanoidBuilder`): if you move a bone, move its constant too.
+- `BodyProfile` angles: θ = π/2 is the front (+Z), −π/2 the back, 0 the character's right (+X). Later garment layers are outer layers; a garment edge becomes a double ring (a visible hem).
+- `SkinnedBodyBuilder` fixes triangle winding per triangle from an outward hint, so new parts don't need hand-wound faces.
+- Runtime normal maps are packed RGB with A = 1 in a linear `Texture2D`; URP's RG/AG unpack reads them correctly on PC.
+- Foot IK raycasts ignore the character itself, `Hitbox` colliders, the player's CharacterController and loose rigidbodies. It is skipped beyond `ikDistance` (40 m) and fades out in Kneel/Cower.
 
 ## Checking your work
 - When the Unity editor has the project open, batchmode can't run. To compile-check, copy `Assembly-CSharp.csproj` to a temp folder, make its `<HintPath>Library\...` entries absolute, replace the `<Compile>` items with every `Assets/_Game/Scripts/**/*.cs` file, and run `dotnet build`. Editor scripts compile in that same assembly.

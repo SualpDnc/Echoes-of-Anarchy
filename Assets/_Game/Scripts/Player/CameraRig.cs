@@ -29,9 +29,14 @@ namespace Echoes.Player
         public float aimFov = 62f;
 
         [Header("Bob")]
-        public float bobVertical = 0.045f;
-        public float bobLateral = 0.03f;
-        public float bobRoll = 0.9f;
+        public float bobVertical = 0.04f;
+        public float bobLateral = 0.025f;
+        public float bobRoll = 0.7f;
+        public float sprintBobMultiplier = 1.3f;
+
+        [Header("Height smoothing")]
+        [Tooltip("How fast the camera catches up with sudden body height changes (curb steps, capsule contact jitter).")]
+        public float heightFollow = 16f;
 
         [Header("Lean")]
         public float leanDistance = 0.4f;
@@ -39,8 +44,10 @@ namespace Echoes.Player
         public float leanSpeed = 7f;
 
         [Header("Handheld noise")]
-        public float idleSway = 0.35f;
-        public float fatigueSway = 1.6f;
+        public float idleSway = 0.12f;
+        public float fatigueSway = 0.6f;
+        public float breathing = 0.06f;
+        public float fatigueBreathing = 0.3f;
 
         FPSController body;
         EchoesInput input;
@@ -52,6 +59,8 @@ namespace Echoes.Player
         float bobWeight;
         float fovCurrent;
         float noiseSeed;
+        float smoothY;
+        bool hasSmoothY;
 
         public bool IsAiming { get; set; }
         public Vector3 Forward => cam.transform.forward;
@@ -121,8 +130,14 @@ namespace Echoes.Player
             transform.rotation = Quaternion.Euler(0f, smYaw, 0f);
             pivot.localRotation = Quaternion.Euler(smPitch - recoil.x, recoil.y, 0f);
 
-            // --- Mount height follows crouch ---
-            float mountY = body.CurrentHeight - mountDrop;
+            // --- Mount height follows crouch; sudden body height changes are eased ---
+            // The capsule snaps up curbs (step offset) and can jitter by millimetres on contact; a body-worn
+            // camera rides those out. Jumps and falls are followed closely so the camera never lags far behind.
+            float bodyY = transform.position.y;
+            if (!hasSmoothY || Mathf.Abs(smoothY - bodyY) > 1f) { smoothY = bodyY; hasSmoothY = true; }
+            smoothY = Mathf.Lerp(smoothY, bodyY, 1f - Mathf.Exp(-(body.IsGrounded ? heightFollow : heightFollow * 2f) * dt));
+            smoothY = Mathf.Clamp(smoothY, bodyY - 0.4f, bodyY + 0.4f);
+            float mountY = body.CurrentHeight - mountDrop + (smoothY - bodyY);
             pivot.localPosition = new Vector3(0f, mountY, forwardOffset);
 
             // --- Lean with wall check ---
@@ -140,11 +155,12 @@ namespace Echoes.Player
             float targetBob = body.IsGrounded ? Mathf.Clamp01(body.HorizontalSpeed / body.walkSpeed) : 0f;
             bobWeight = Mathf.Lerp(bobWeight, targetBob, 1f - Mathf.Exp(-8f * dt));
             float stepT = (body.StepIndex + body.StepPhase) * Mathf.PI; // one PI per step
-            float sprintMul = body.IsSprinting ? 1.6f : body.IsCrouching ? 0.6f : 1f;
+            float sprintMul = body.IsSprinting ? sprintBobMultiplier : body.IsCrouching ? 0.6f : 1f;
             float aimMul = IsAiming ? 0.35f : 1f;
             float bw = bobWeight * sprintMul * aimMul;
-            // Vertical dips on each footfall (|sin|), lateral sways once per two steps.
-            float bobY = -Mathf.Abs(Mathf.Sin(stepT)) * bobVertical * bw + bobVertical * 0.5f * bw;
+            // Vertical dip once per step (sin², smooth, no jolt at the footfall), lateral sway once per two steps.
+            float sn = Mathf.Sin(stepT);
+            float bobY = (0.5f - sn * sn) * bobVertical * bw;
             float bobX = Mathf.Sin(stepT * 0.5f) * bobLateral * bw;
             float bobR = Mathf.Sin(stepT * 0.5f) * bobRoll * bw;
 
@@ -156,7 +172,7 @@ namespace Echoes.Player
             float fatigue = 1f - body.Stamina01;
             float t = Time.time;
             float swayAmp = (idleSway + fatigueSway * fatigue * fatigue) * aimMul;
-            float breath = Mathf.Sin(t * Mathf.Lerp(1.4f, 3.6f, fatigue)) * (0.15f + fatigue * 0.6f);
+            float breath = Mathf.Sin(t * Mathf.Lerp(1.4f, 3.2f, fatigue)) * (breathing + fatigue * fatigueBreathing);
             float nx = (Mathf.PerlinNoise(noiseSeed, t * 0.45f) - 0.5f) * 2f * swayAmp + breath * aimMul;
             float ny = (Mathf.PerlinNoise(noiseSeed + 13.7f, t * 0.4f) - 0.5f) * 2f * swayAmp;
             float nz = (Mathf.PerlinNoise(noiseSeed + 27.1f, t * 0.35f) - 0.5f) * 2f * swayAmp * 0.6f;

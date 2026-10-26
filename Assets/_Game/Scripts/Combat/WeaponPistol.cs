@@ -132,8 +132,9 @@ namespace Echoes.Combat
             sway = Vector2.Lerp(sway, -look, 1f - Mathf.Exp(-8f * dt));
             sway = Vector2.ClampMagnitude(sway, 3f);
             float stepT = (body.StepIndex + body.StepPhase) * Mathf.PI;
-            float bobAmt = Mathf.Clamp01(body.HorizontalSpeed / body.walkSpeed) * (1f - aim * 0.8f) * (body.IsSprinting ? 1.6f : 1f);
-            Vector3 bob = new Vector3(Mathf.Sin(stepT * 0.5f) * 0.008f, -Mathf.Abs(Mathf.Sin(stepT)) * 0.01f, 0f) * bobAmt;
+            float bobAmt = Mathf.Clamp01(body.HorizontalSpeed / body.walkSpeed) * (1f - aim * 0.8f) * (body.IsSprinting ? 1.3f : 1f);
+            float sn = Mathf.Sin(stepT);
+            Vector3 bob = new Vector3(Mathf.Sin(stepT * 0.5f) * 0.008f, -sn * sn * 0.01f, 0f) * bobAmt; // sin²: no jolt at the footfall
 
             Vector3 hipPos = new Vector3(0.105f, -0.19f, 0.36f), aimPos = new Vector3(0f, -0.018f, 0.31f);
             Vector3 lowPos = new Vector3(0.1f, -0.3f, 0.26f), holsterPos = new Vector3(0.18f, -0.55f, 0.15f);

@@ -1,6 +1,7 @@
+using System;
 using UnityEngine;
+using UnityEngine.Rendering;
 using Echoes.Combat;
-using Echoes.Rendering;
 
 namespace Echoes.AI
 {
@@ -8,25 +9,30 @@ namespace Echoes.AI
     public enum NPCWeapon { None, Pistol, Bat }
 
     /// <summary>
-    /// Builds a segmented humanoid (16 bones, ~1.75 m) with per-faction clothing and masks, bone hitboxes and colliders.
-    /// Bones have identity rest rotations and limbs hang along −Y, which keeps procedural animation simple.
+    /// Builds a humanoid (16 bones, ~1.75 m) with one skinned mesh: lofted torso, arms and legs with garment layers
+    /// (hems, cuffs, waistbands), shoes, sculpted head and mask (MaskFactory), clothing details (OutfitDetails),
+    /// plus bone hitboxes and colliders. Bones have identity rest rotations and limbs hang along −Y, which keeps
+    /// procedural animation simple. Geometry is authored for a 1.0-scale body and scaled by look.height.
     /// </summary>
     public static class HumanoidBuilder
     {
-        struct Outfit
-        {
-            public Material top, sleeves, pants, shoes, skin, hands, head;
-        }
+        // Rest heights (unscaled) of the joints the skinning blends around.
+        const float NeckY = 1.585f, ChestY = 1.27f, SpineY = 1.07f, ElbowY = 1.185f, WristY = 0.935f, KneeY = 0.49f, AnkleY = 0.07f;
 
         public static HumanoidRig Build(Transform parent, Faction faction, int seed, out Health health)
         {
             var rng = new System.Random(seed);
-            var root = new GameObject(faction.ToString()).transform;
+            return Build(parent, CharacterLook.Random(faction, rng), rng, out health);
+        }
+
+        public static HumanoidRig Build(Transform parent, CharacterLook look, System.Random rng, out Health health)
+        {
+            var root = new GameObject(look.faction.ToString()).transform;
             root.SetParent(parent, false);
             health = root.gameObject.AddComponent<Health>();
             var rig = root.gameObject.AddComponent<HumanoidRig>();
-            var o = Dress(faction, rng);
-            float s = 0.94f + (float)rng.NextDouble() * 0.12f; // height variation
+            float s = look.height;
+            float armX = look.feminine ? 0.172f : 0.185f;
 
             Transform B(Bone b, Transform p, Vector3 lp)
             {
@@ -41,10 +47,10 @@ namespace Echoes.AI
             var spine = B(Bone.Spine, pelvis, new Vector3(0f, 0.12f, 0f));
             var chest = B(Bone.Chest, spine, new Vector3(0f, 0.2f, 0f));
             var head = B(Bone.Head, chest, new Vector3(0f, 0.3f, 0f));
-            var uaL = B(Bone.UpperArmL, chest, new Vector3(-0.2f, 0.17f, 0f));
+            var uaL = B(Bone.UpperArmL, chest, new Vector3(-armX, 0.17f, 0f));
             var laL = B(Bone.LowerArmL, uaL, new Vector3(0f, -0.29f, 0f));
             var hL = B(Bone.HandL, laL, new Vector3(0f, -0.26f, 0f));
-            var uaR = B(Bone.UpperArmR, chest, new Vector3(0.2f, 0.17f, 0f));
+            var uaR = B(Bone.UpperArmR, chest, new Vector3(armX, 0.17f, 0f));
             var laR = B(Bone.LowerArmR, uaR, new Vector3(0f, -0.29f, 0f));
             var hR = B(Bone.HandR, laR, new Vector3(0f, -0.26f, 0f));
             var ulL = B(Bone.UpperLegL, pelvis, new Vector3(-0.1f, -0.05f, 0f));
@@ -54,27 +60,36 @@ namespace Echoes.AI
             var llR = B(Bone.LowerLegR, ulR, new Vector3(0f, -0.44f, 0f));
             var fR = B(Bone.FootR, llR, new Vector3(0f, -0.44f, 0f));
 
-            // ---- Visual parts (renderers only; colliders live on the bones).
-            var P = (System.Func<Transform, string, PrimitiveType, Vector3, Vector3, Material, GameObject>)((t, n, type, pos, scale, m) => PrimitiveMeshes.Part(t, n, type, pos, scale, m));
-            P(pelvis, "Hips", PrimitiveType.Cube, new Vector3(0f, 0f, 0f), new Vector3(0.33f, 0.2f, 0.21f), o.pants);
-            P(spine, "Belly", PrimitiveType.Cube, new Vector3(0f, 0.09f, 0f), new Vector3(0.31f, 0.22f, 0.19f), o.top);
-            P(chest, "Torso", PrimitiveType.Cube, new Vector3(0f, 0.12f, 0.005f), new Vector3(0.38f, 0.3f, 0.23f), o.top);
-            P(chest, "Shoulders", PrimitiveType.Capsule, new Vector3(0f, 0.19f, 0f), new Vector3(0.2f, 0.23f, 0.2f), o.top).transform.localRotation = Quaternion.Euler(0f, 0f, 90f);
-            P(chest, "Neck", PrimitiveType.Capsule, new Vector3(0f, 0.28f, 0f), new Vector3(0.1f, 0.05f, 0.1f), o.skin);
-            P(head, "Skull", PrimitiveType.Sphere, new Vector3(0f, 0.1f, 0.01f), new Vector3(0.2f, 0.245f, 0.225f), o.head);
-            foreach (var (ua, la, h) in new[] { (uaL, laL, hL), (uaR, laR, hR) })
+            // ---- Skinned body.
+            var mb = new SkinnedBodyBuilder();
+            var torso = TorsoProfile(look);
+            mb.Tube(torso, 22, 0.03f, TorsoSkin);
+            var legs = new BodyProfile[2];
+            for (int side = -1; side <= 1; side += 2)
             {
-                P(ua, "UpperArm", PrimitiveType.Capsule, new Vector3(0f, -0.14f, 0f), new Vector3(0.105f, 0.16f, 0.105f), o.sleeves);
-                P(la, "Forearm", PrimitiveType.Capsule, new Vector3(0f, -0.13f, 0f), new Vector3(0.088f, 0.145f, 0.088f), o.sleeves);
-                P(h, "Hand", PrimitiveType.Sphere, new Vector3(0f, -0.05f, 0.005f), new Vector3(0.075f, 0.11f, 0.045f), o.hands);
+                var arm = ArmProfile(look, side * armX);
+                Func<Vector3, Skin> armSkin = ArmSkin(side);
+                mb.Tube(arm, 12, 0.03f, armSkin);
+                mb.Tube(ThumbProfile(look, side * (armX - 0.006f)), 6, 0.02f, armSkin);
+                var leg = LegProfile(look, side * 0.1f);
+                legs[side < 0 ? 0 : 1] = leg;
+                mb.Tube(leg, 14, 0.035f, LegSkin(side));
+                Shoe(mb, look, side * 0.1f, Skin.On(side < 0 ? Bone.FootL : Bone.FootR));
             }
-            foreach (var (ul, ll, f) in new[] { (ulL, llL, fL), (ulR, llR, fR) })
-            {
-                P(ul, "Thigh", PrimitiveType.Capsule, new Vector3(0f, -0.22f, 0f), new Vector3(0.155f, 0.24f, 0.155f), o.pants);
-                P(ll, "Shin", PrimitiveType.Capsule, new Vector3(0f, -0.22f, 0f), new Vector3(0.125f, 0.23f, 0.125f), o.pants);
-                P(f, "Shoe", PrimitiveType.Cube, new Vector3(0f, -0.015f, 0.05f), new Vector3(0.105f, 0.085f, 0.26f), o.shoes);
-            }
-            MaskFactory.Apply(faction, head, rng);
+            OutfitDetails.Add(mb, look, torso, legs, TorsoSkin, LegSkin(-1), LegSkin(1));
+            MaskFactory.Head(mb, look, rng);
+            mb.ScaleVertices(s);
+
+            var bodyGo = new GameObject("Body");
+            bodyGo.transform.SetParent(root, false);
+            var smr = bodyGo.AddComponent<SkinnedMeshRenderer>();
+            smr.sharedMesh = mb.ToMesh(look.faction + "_Body", rig.bones, bodyGo.transform, out var mats);
+            smr.sharedMaterials = mats;
+            smr.bones = rig.bones;
+            smr.rootBone = pelvis;
+            smr.quality = SkinQuality.Bone2;
+            smr.localBounds = new Bounds(new Vector3(0f, 0f, 0f), new Vector3(2.4f, 2.6f, 2.4f)); // generous: ragdolls sprawl
+            smr.shadowCastingMode = ShadowCastingMode.On;
 
             // ---- Colliders + hitboxes.
             Capsule(pelvis, health, BodyPart.Torso, 1f, Vector3.zero, 0.16f, 0.34f, 0);
@@ -95,6 +110,196 @@ namespace Echoes.AI
             rig.eyes.localPosition = new Vector3(0f, 0.11f, 0.12f);
             return rig;
         }
+
+        // ------------------------------------------------------------------ skinning
+
+        static Skin TorsoSkin(Vector3 p)
+        {
+            if (p.y > 1.5f) return Skin.Joint(Bone.Head, Bone.Chest, p.y, NeckY, 0.035f);
+            if (p.y > 1.17f) return Skin.Joint(Bone.Chest, Bone.Spine, p.y, ChestY, 0.06f);
+            if (p.y > 0.93f) return Skin.Joint(Bone.Spine, Bone.Pelvis, p.y, SpineY, 0.05f);
+            // Buttocks and hip sides partly follow the thighs, so a raised leg doesn't tear out of the hips.
+            float w = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.93f, 0.82f, p.y)) * Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(0.03f, 0.1f, Mathf.Abs(p.x))) * 0.55f;
+            return Skin.Blend(Bone.Pelvis, p.x < 0f ? Bone.UpperLegL : Bone.UpperLegR, w);
+        }
+
+        static Func<Vector3, Skin> ArmSkin(int side)
+        {
+            Bone ua = side < 0 ? Bone.UpperArmL : Bone.UpperArmR, la = side < 0 ? Bone.LowerArmL : Bone.LowerArmR, h = side < 0 ? Bone.HandL : Bone.HandR;
+            return p => p.y > 1.06f ? Skin.Joint(ua, la, p.y, ElbowY, 0.04f) : Skin.Joint(la, h, p.y, WristY, 0.025f);
+        }
+
+        static Func<Vector3, Skin> LegSkin(int side)
+        {
+            Bone ul = side < 0 ? Bone.UpperLegL : Bone.UpperLegR, ll = side < 0 ? Bone.LowerLegL : Bone.LowerLegR, f = side < 0 ? Bone.FootL : Bone.FootR;
+            return p => p.y > 0.28f ? Skin.Joint(ul, ll, p.y, KneeY, 0.05f) : Skin.Joint(ll, f, p.y, AnkleY, 0.025f);
+        }
+
+        // ------------------------------------------------------------------ profiles
+
+        static BodyProfile TorsoProfile(CharacterLook look)
+        {
+            var p = new BodyProfile { baseMat = look.skin };
+            p.Add(0.80f, 0.10f, 0.06f, 0.07f, 2.2f)
+             .Add(0.84f, 0.15f, 0.08f, 0.095f, 2.4f)
+             .Add(0.90f, 0.172f, 0.09f, 0.11f, 2.5f)
+             .Add(0.96f, 0.172f, 0.09f, 0.105f, 2.5f)
+             .Add(1.02f, 0.16f, 0.09f, 0.095f, 2.5f)
+             .Add(1.08f, 0.148f, 0.092f, 0.088f, 2.5f)
+             .Add(1.15f, 0.152f, 0.098f, 0.09f, 2.6f)
+             .Add(1.22f, 0.162f, 0.105f, 0.095f, 2.7f)
+             .Add(1.30f, 0.172f, 0.112f, 0.10f, 2.8f)
+             .Add(1.38f, 0.178f, 0.11f, 0.10f, 2.9f)
+             .Add(1.44f, 0.178f, 0.095f, 0.095f, 3.0f)
+             .Add(1.49f, 0.155f, 0.08f, 0.085f, 2.6f)
+             .Add(1.53f, 0.085f, 0.065f, 0.07f, 2.2f)
+             .Add(1.57f, 0.055f, 0.055f, 0.055f, 2f)
+             .Add(1.64f, 0.05f, 0.05f, 0.05f, 2f);
+            if (look.feminine)
+            {
+                p.Bulge(0.93f, 0.06f, 0f, 0.01f, 0.012f);   // hips
+                p.Bulge(1.09f, 0.06f, -0.004f, 0f, -0.014f); // waist
+                p.Bulge(1.42f, 0.05f, 0f, 0f, -0.016f);      // narrower shoulders
+                p.Bulge(1.32f, 0.05f, 0.03f);                // bust
+            }
+            p.Inflate(look.bulk);
+            if (look.belly > 0f) p.Bulge(1.1f, 0.09f, 0.045f * look.belly, 0.005f * look.belly, 0.015f * look.belly);
+
+            // Garments, inner to outer.
+            switch (look.pants)
+            {
+                case PantsKind.Sweatpants: p.layers.Add(new BodyProfile.Layer(look.pantsMat, 0.8f, 1.04f, 0.008f, 0.008f, 0f, 0.035f)); break;
+                default: p.layers.Add(new BodyProfile.Layer(look.pantsMat, 0.8f, 1.03f, 0.006f, 0.006f, 0f, 0.03f)); break;
+            }
+            switch (look.top)
+            {
+                case TopKind.Hoodie: p.layers.Add(new BodyProfile.Layer(look.topMat, 0.9f, 1.545f, 0.014f, 0.011f, 0.045f, 0.015f)); break;
+                case TopKind.TShirt: p.layers.Add(new BodyProfile.Layer(look.topMat, 0.93f, 1.535f, 0.008f, 0.006f, 0f, 0.012f)); break;
+                case TopKind.Sweater: p.layers.Add(new BodyProfile.Layer(look.topMat, 0.92f, 1.555f, 0.013f, 0.012f, 0.035f, 0.035f)); break;
+                case TopKind.OpenJacket: p.layers.Add(new BodyProfile.Layer(look.topMat, 0.89f, 1.545f, 0.016f, 0.013f)); break;
+                case TopKind.WorkJacket: p.layers.Add(new BodyProfile.Layer(look.topMat, 0.9f, 1.56f, 0.017f, 0.014f, 0.03f, 0.03f)); break;
+                case TopKind.Suit:
+                    p.layers.Add(new BodyProfile.Layer(look.topMat, 0.86f, 1.5f, 0.014f, 0.011f));
+                    p.layers.Add(new BodyProfile.Layer(look.innerMat, 1.49f, 1.565f, 0.008f, 0.008f)); // shirt collar
+                    break;
+            }
+            return p;
+        }
+
+        static BodyProfile ArmProfile(CharacterLook look, float x)
+        {
+            float k = 1f + (look.bulk - 1f) * 0.8f;
+            float f = look.feminine ? 0.88f : 1f;
+            var p = new BodyProfile { baseMat = look.skin };
+            p.Add(1.535f, 0.03f * k, 0.03f * k, 0.03f * k, 2f, x)
+             .Add(1.52f, 0.05f * k, 0.05f * k, 0.05f * k, 2f, x)
+             .Add(1.49f, 0.058f * k * f, 0.055f * k * f, 0.055f * k * f, 2f, x)
+             .Add(1.42f, 0.052f * k * f, 0.05f * k * f, 0.05f * k * f, 2f, x)
+             .Add(1.34f, 0.046f * k * f, 0.048f * k * f, 0.045f * k * f, 2f, x)
+             .Add(1.25f, 0.042f * k * f, 0.042f * k * f, 0.04f * k * f, 2f, x)
+             .Add(1.18f, 0.038f * k * f, 0.037f * k * f, 0.038f * k * f, 2f, x)
+             .Add(1.12f, 0.042f * k * f, 0.04f * k * f, 0.04f * k * f, 2f, x)
+             .Add(1.04f, 0.036f * k * f, 0.034f * k * f, 0.033f * k * f, 2f, x)
+             // Hand: palm faces the thigh, so it is thin in X and wide in Z.
+             .Add(0.94f, 0.022f * f, 0.028f * f, 0.028f * f, 2f, x)
+             .Add(0.91f, 0.02f * f, 0.038f * f, 0.034f * f, 2.4f, x)
+             .Add(0.87f, 0.019f * f, 0.046f * f, 0.04f * f, 2.6f, x)
+             .Add(0.83f, 0.017f * f, 0.043f * f, 0.038f * f, 2.6f, x)
+             .Add(0.79f, 0.015f * f, 0.035f * f, 0.03f * f, 2.2f, x)
+             .Add(0.765f, 0.01f * f, 0.02f * f, 0.018f * f, 2f, x);
+
+            if (look.gloves) p.layers.Add(new BodyProfile.Layer(look.gloveMat, 0.76f, 0.975f, 0.003f, 0.003f));
+            switch (look.top)
+            {
+                case TopKind.Hoodie: p.layers.Add(new BodyProfile.Layer(look.topMat, 0.95f, 1.54f, 0.013f, 0.012f, 0.045f)); break;
+                case TopKind.Sweater: p.layers.Add(new BodyProfile.Layer(look.topMat, 0.955f, 1.54f, 0.012f, 0.012f, 0.04f)); break;
+                case TopKind.TShirt:
+                    if (look.shortSleeves) p.layers.Add(new BodyProfile.Layer(look.topMat, 1.28f, 1.54f, 0.012f, 0.007f, 0.012f));
+                    else p.layers.Add(new BodyProfile.Layer(look.topMat, 0.96f, 1.54f, 0.008f, 0.007f, 0.015f));
+                    break;
+                case TopKind.OpenJacket:
+                case TopKind.WorkJacket: p.layers.Add(new BodyProfile.Layer(look.topMat, 0.955f, 1.54f, 0.016f, 0.015f, look.top == TopKind.WorkJacket ? 0.03f : 0f)); break;
+                case TopKind.Suit:
+                    p.layers.Add(new BodyProfile.Layer(look.innerMat, 0.945f, 0.975f, 0.009f, 0.009f)); // shirt cuff
+                    p.layers.Add(new BodyProfile.Layer(look.topMat, 0.965f, 1.54f, 0.013f, 0.012f));
+                    break;
+            }
+            return p;
+        }
+
+        static BodyProfile ThumbProfile(CharacterLook look, float x)
+        {
+            var p = new BodyProfile { baseMat = look.gloves ? look.gloveMat : look.skin };
+            float f = look.feminine ? 0.88f : 1f;
+            p.Add(0.925f, 0.013f * f, 0.013f * f, 0.013f * f, 2f, x, 0.022f)
+             .Add(0.895f, 0.0125f * f, 0.012f * f, 0.012f * f, 2f, x, 0.04f)
+             .Add(0.865f, 0.01f * f, 0.01f * f, 0.01f * f, 2f, x, 0.05f)
+             .Add(0.85f, 0.006f * f, 0.006f * f, 0.006f * f, 2f, x, 0.052f);
+            return p;
+        }
+
+        static BodyProfile LegProfile(CharacterLook look, float x)
+        {
+            float k = 1f + (look.bulk - 1f) * 0.9f;
+            float f = look.feminine ? 1.04f : 1f;
+            var p = new BodyProfile { baseMat = look.skin };
+            p.Add(0.04f, 0.03f, 0.03f, 0.032f, 2f, x)
+             .Add(0.08f, 0.032f, 0.035f, 0.035f, 2f, x)
+             .Add(0.14f, 0.033f * k, 0.033f * k, 0.035f * k, 2f, x)
+             .Add(0.24f, 0.042f * k, 0.04f * k, 0.05f * k, 2f, x)
+             .Add(0.34f, 0.05f * k, 0.045f * k, 0.065f * k, 2f, x)
+             .Add(0.43f, 0.05f * k, 0.05f * k, 0.055f * k, 2f, x)
+             .Add(0.50f, 0.052f * k, 0.058f * k, 0.05f * k, 2f, x)
+             .Add(0.58f, 0.058f * k * f, 0.06f * k * f, 0.055f * k * f, 2f, x)
+             .Add(0.70f, 0.07f * k * f, 0.068f * k * f, 0.07f * k * f, 2f, x)
+             .Add(0.82f, 0.077f * k * f, 0.076f * k * f, 0.082f * k * f, 2f, x)
+             .Add(0.92f, 0.08f * k * f, 0.078f * k * f, 0.088f * k * f, 2f, x)
+             .Add(0.98f, 0.065f * k, 0.065f * k, 0.07f * k, 2f, x);
+
+            switch (look.pants)
+            {
+                case PantsKind.Cargo: p.layers.Add(new BodyProfile.Layer(look.pantsMat, 0.06f, 0.98f, 0.02f, 0.014f)); break;
+                case PantsKind.Sweatpants: p.layers.Add(new BodyProfile.Layer(look.pantsMat, 0.07f, 0.98f, 0.006f, 0.013f, 0.045f)); break;
+                case PantsKind.Suit: p.layers.Add(new BodyProfile.Layer(look.pantsMat, 0.055f, 0.98f, 0.014f, 0.008f)); break;
+                default: p.layers.Add(new BodyProfile.Layer(look.pantsMat, 0.06f, 0.98f, 0.014f, 0.006f)); break;
+            }
+            if (look.shoes == ShoeKind.Boot) p.layers.Add(new BodyProfile.Layer(look.shoeMat, 0.04f, 0.17f, 0.016f, 0.016f, 0f, 0.012f));
+            return p;
+        }
+
+        /// <summary>Shoe upper lofted heel-to-toe (a tube along +Z) on a flat, slightly wider sole.</summary>
+        static void Shoe(SkinnedBodyBuilder mb, CharacterLook look, float x, Skin skin)
+        {
+            bool dress = look.shoes == ShoeKind.Dress;
+            float w = dress ? 0.9f : look.shoes == ShoeKind.Boot ? 1.08f : 1.04f;
+            float toeH = dress ? 0.8f : 1.05f;
+            // Local tube space: y = world forward (+Z), z = world down (so cz = −height of the section centre).
+            mb.matrix = Matrix4x4.TRS(new Vector3(x, 0.012f, 0f), Quaternion.Euler(90f, 0f, 0f), Vector3.one);
+            var upper = new BodyProfile { baseMat = look.shoeMat };
+            upper.Add(-0.075f, 0.028f * w, 0.026f, 0.018f, 2.2f, 0f, -0.038f)
+                 .Add(-0.062f, 0.04f * w, 0.038f, 0.032f, 2.6f, 0f, -0.04f)
+                 .Add(-0.03f, 0.044f * w, 0.042f, 0.045f, 2.8f, 0f, -0.042f)
+                 .Add(0.02f, 0.046f * w, 0.04f, 0.04f, 2.8f, 0f, -0.04f)
+                 .Add(0.08f, 0.05f * w, 0.032f * toeH, 0.026f * toeH, 3f, 0f, -0.032f * toeH)
+                 .Add(0.14f, 0.048f * w, 0.026f * toeH, 0.02f * toeH, 3f, 0f, -0.026f * toeH)
+                 .Add(0.18f, 0.038f * w, 0.022f * toeH, 0.016f * toeH, 2.6f, 0f, -0.022f * toeH)
+                 .Add(0.2f, 0.02f * w, 0.014f, 0.01f, 2.2f, 0f, -0.018f);
+            mb.Tube(upper, 14, 0.02f, _ => skin);
+
+            mb.matrix = Matrix4x4.TRS(new Vector3(x, 0f, 0f), Quaternion.Euler(90f, 0f, 0f), Vector3.one);
+            float sole = dress ? 0.006f : 0.009f;
+            var soleP = new BodyProfile { baseMat = look.soleMat };
+            soleP.Add(-0.078f, 0.03f * w, sole, sole, 4f, 0f, -sole)
+                 .Add(-0.065f, 0.043f * w, sole, sole, 4f, 0f, -sole)
+                 .Add(0.02f, 0.048f * w, sole, sole, 4f, 0f, -sole)
+                 .Add(0.09f, 0.053f * w, sole, sole, 4f, 0f, -sole)
+                 .Add(0.18f, 0.041f * w, sole, sole, 4f, 0f, -sole)
+                 .Add(0.205f, 0.02f * w, sole, sole, 3f, 0f, -sole);
+            mb.Tube(soleP, 14, 0.03f, _ => skin);
+            mb.matrix = Matrix4x4.identity;
+        }
+
+        // ------------------------------------------------------------------ physics
 
         static void Capsule(Transform t, Health h, BodyPart part, float mult, Vector3 center, float radius, float height, int dir)
         {
@@ -118,29 +323,6 @@ namespace Echoes.AI
             hb.owner = h;
             hb.part = BodyPart.Head;
             hb.multiplier = 3.5f;
-        }
-
-        static Material L(float r, float g, float b, float smooth = 0.2f) => RuntimeMaterials.Lit(new Color(r, g, b), smooth);
-
-        static Outfit Dress(Faction f, System.Random rng)
-        {
-            Color[] skins = { new Color(0.45f, 0.3f, 0.22f), new Color(0.3f, 0.19f, 0.13f), new Color(0.6f, 0.43f, 0.33f), new Color(0.18f, 0.11f, 0.08f) };
-            var skin = RuntimeMaterials.Lit(skins[rng.Next(skins.Length)], 0.35f);
-            switch (f)
-            {
-                case Faction.Smiler:
-                    // Matching black suits with white gloves: a "uniform" for the stream.
-                    var suit = L(0.015f, 0.015f, 0.018f, 0.35f);
-                    return new Outfit { top = suit, sleeves = suit, pants = suit, shoes = L(0.01f, 0.01f, 0.01f, 0.7f), skin = skin, hands = L(0.7f, 0.7f, 0.68f, 0.3f), head = L(0.02f, 0.02f, 0.02f, 0.85f) };
-                case Faction.Looter:
-                    Material[] hoodies = { L(0.08f, 0.08f, 0.085f), L(0.12f, 0.1f, 0.05f), L(0.05f, 0.07f, 0.04f), L(0.15f, 0.03f, 0.03f) };
-                    var hoodie = hoodies[rng.Next(hoodies.Length)];
-                    return new Outfit { top = hoodie, sleeves = hoodie, pants = rng.NextDouble() < 0.6 ? L(0.04f, 0.06f, 0.12f) : L(0.06f, 0.06f, 0.06f), shoes = L(0.25f, 0.25f, 0.25f), skin = skin, hands = skin, head = hoodie };
-                default:
-                    Material[] tops = { L(0.35f, 0.33f, 0.3f), L(0.08f, 0.15f, 0.3f), L(0.3f, 0.12f, 0.1f), L(0.2f, 0.22f, 0.15f) };
-                    var top = tops[rng.Next(tops.Length)];
-                    return new Outfit { top = top, sleeves = rng.NextDouble() < 0.5 ? top : skin, pants = L(0.12f, 0.1f, 0.08f), shoes = L(0.1f, 0.07f, 0.05f), skin = skin, hands = skin, head = skin };
-            }
         }
     }
 }

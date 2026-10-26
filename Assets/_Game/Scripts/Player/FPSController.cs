@@ -42,6 +42,10 @@ namespace Echoes.Player
         public float sprintStride = 1.1f;
         public float crouchStride = 0.55f;
 
+        [Header("Ground")]
+        [Tooltip("Brief contact losses shorter than this (curbs, seams, high frame rates) don't count as airborne.")]
+        public float groundedGraceTime = 0.12f;
+
         public event Action<float> Footstep;      // arg: intensity 0..1
         public event Action<float> Landed;        // arg: impact speed (m/s)
         public event Action Jumped;
@@ -55,8 +59,8 @@ namespace Echoes.Player
         public bool IsSprinting { get; private set; }
         public float CrouchBlend { get; private set; }          // 0 standing .. 1 fully crouched
         public float Stamina01 => stamina / staminaMax;
-        /// <summary>0..1 normalized progress through the current stride.</summary>
-        public float StepPhase => stepDistance / CurrentStride;
+        /// <summary>0..1 progress through the current step. Continuous: it only advances with distance walked.</summary>
+        public float StepPhase => stepCycle - StepIndex;
         public int StepIndex { get; private set; }
         /// <summary>How loud the player currently is, 0..1. Used by AI hearing.</summary>
         public float CurrentNoise { get; private set; }
@@ -68,9 +72,10 @@ namespace Echoes.Player
         float staminaCooldown;
         bool exhausted;
         bool crouchToggled;
-        float stepDistance;
+        float stepCycle; // steps taken, fractional
         float peakFallSpeed;
         float airTime;
+        float groundedGrace;
         bool wasGrounded;
 
         float CurrentStride => IsCrouching ? crouchStride : Mathf.Lerp(walkStride, sprintStride, Mathf.InverseLerp(walkSpeed, sprintSpeed, HorizontalSpeed));
@@ -91,7 +96,11 @@ namespace Echoes.Player
         void Update()
         {
             float dt = Time.deltaTime;
-            IsGrounded = Controller.isGrounded;
+            // The controller's contact flag flickers for single frames on seams, curbs and at high frame rates.
+            // Gameplay and camera use a debounced flag so sprint, FOV and bob don't toggle on and off.
+            bool rawGrounded = Controller.isGrounded;
+            groundedGrace = rawGrounded ? groundedGraceTime : groundedGrace - dt;
+            IsGrounded = rawGrounded || (groundedGrace > 0f && velocity.y <= 0f);
 
             UpdateCrouch(dt);
 
@@ -111,11 +120,14 @@ namespace Echoes.Player
             float accel = IsGrounded ? (targetVel.sqrMagnitude >= hv.sqrMagnitude ? groundAccel : groundDecel) : airAccel;
             hv = Vector3.MoveTowards(hv, targetVel, accel * dt);
 
+            bool jumped = false;
             if (IsGrounded)
             {
-                if (velocity.y < 0f) velocity.y = -2f;
+                if (rawGrounded && velocity.y < 0f) velocity.y = -2f;
                 if (input.JumpPressed && !IsCrouching && stamina > jumpStaminaCost * 0.5f)
                 {
+                    jumped = true;
+                    groundedGrace = 0f;
                     velocity.y = Mathf.Sqrt(2f * jumpHeight * -gravity);
                     stamina = Mathf.Max(0f, stamina - jumpStaminaCost);
                     staminaCooldown = staminaRegenDelay;
@@ -129,8 +141,17 @@ namespace Echoes.Player
             CollisionFlags flags = Controller.Move(velocity * dt);
             if ((flags & CollisionFlags.Above) != 0 && velocity.y > 0f) velocity.y = 0f;
 
-            // Landing detection
+            // Stepping off a curb: snap down onto ground within step height instead of falling (and bouncing the camera).
             bool groundedNow = Controller.isGrounded;
+            if (wasGrounded && !groundedNow && !jumped && velocity.y <= 0f
+                && Physics.Raycast(transform.position + Vector3.up * 0.05f, Vector3.down, out RaycastHit gh, Controller.stepOffset + 0.05f, ~0, QueryTriggerInteraction.Ignore))
+            {
+                Controller.Move(Vector3.down * gh.distance);
+                groundedNow = Controller.isGrounded;
+                if (groundedNow) velocity.y = -2f;
+            }
+
+            // Landing detection
             if (!groundedNow) { peakFallSpeed = Mathf.Max(peakFallSpeed, -velocity.y); airTime += dt; }
             if (groundedNow && !wasGrounded)
             {
@@ -138,7 +159,6 @@ namespace Echoes.Player
                 if (peakFallSpeed > 2.5f && airTime > 0.2f) Landed?.Invoke(peakFallSpeed);
                 airTime = 0f;
                 peakFallSpeed = 0f;
-                stepDistance = CurrentStride * 0.5f; // a landing reads as a step soon after
             }
             wasGrounded = groundedNow;
 
@@ -193,24 +213,20 @@ namespace Echoes.Player
         void UpdateStepCycle(float dt)
         {
             float speed = HorizontalSpeed;
-            if (Controller.isGrounded && speed > 0.15f)
+            // The cycle advances by distance / stride, so a stride change alters the pace, never the phase
+            // (no sudden jumps in the camera bob). It simply holds when standing still or airborne.
+            if (IsGrounded && speed > 0.15f)
             {
-                stepDistance += speed * dt;
-                float stride = CurrentStride;
-                if (stepDistance >= stride)
+                stepCycle += speed * dt / CurrentStride;
+                if (stepCycle >= StepIndex + 1)
                 {
-                    stepDistance -= stride;
-                    StepIndex++;
+                    StepIndex = Mathf.FloorToInt(stepCycle);
                     float intensity = IsCrouching ? 0.2f : Mathf.Lerp(0.45f, 1f, Mathf.InverseLerp(walkSpeed, sprintSpeed, speed));
                     Footstep?.Invoke(intensity);
                 }
             }
-            else
-            {
-                stepDistance = Mathf.MoveTowards(stepDistance, 0f, dt);
-            }
 
-            float targetNoise = !Controller.isGrounded ? 0.3f
+            float targetNoise = !IsGrounded ? 0.3f
                 : speed < 0.15f ? 0f
                 : IsCrouching ? 0.1f
                 : IsSprinting ? 1f : 0.4f;

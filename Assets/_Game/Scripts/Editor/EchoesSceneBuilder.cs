@@ -92,6 +92,7 @@ namespace Echoes.EditorTools
         {
             var sys = new GameObject("Systems");
             sys.AddComponent<GameClock>();
+            sys.AddComponent<CharacterLineup>();
             new GameObject("Bodycam HUD").AddComponent<BodycamHUD>();
 
             var audio = new GameObject("Audio");
