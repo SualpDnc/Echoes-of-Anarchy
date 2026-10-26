@@ -108,6 +108,9 @@ namespace Echoes.World
             l.innerSpotAngle = 55f;
             l.shadows = shadows ? LightShadows.Soft : LightShadows.None;
             l.shadowNearPlane = 0.4f;
+            var street = lightGo.AddComponent<StreetLight>(); // city power: the 19:00 blackout switches it
+            street.lens = lens.GetComponent<Renderer>();
+            street.lensEmission = Sodium * 8f;
             if (failing)
             {
                 var f = lightGo.AddComponent<LightFlicker>();

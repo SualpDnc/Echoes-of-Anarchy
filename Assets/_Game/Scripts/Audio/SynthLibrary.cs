@@ -11,7 +11,9 @@ namespace Echoes.Audio
         GunPistolFar, GunRifleFar, Scream, DogBark, CarAlarm, PoliceSiren, Explosion, Firework, GlassBreak,
         PurgeSiren, EBSTone,
         GunPistolNear, DryFire, MagOut, MagIn, SlideRack, ShellCasing, ImpactHard, ImpactMetal, ImpactFlesh, Whizz,
-        TensionHit, Heartbeat, BodyFall, BatSwing, BatHit, Bandage
+        TensionHit, Heartbeat, BodyFall, BatSwing, BatHit, Bandage,
+        VoiceDaniel, VoiceLuis, VoiceMiaPhone, VoiceMiaClone, VoiceDispatch, VoiceMale, VoiceFemale, VoiceSmiler, VoiceHale,
+        PhoneRing, PhonePickup, PhoneHangup, VoicemailBeep, RadioSquelch
     }
 
     /// <summary>
@@ -30,7 +32,7 @@ namespace Echoes.Audio
 
         public static List<Recipe> All()
         {
-            return new List<Recipe>
+            var all = new List<Recipe>
             {
                 new Recipe { id = SoundId.StepAsphalt, variations = 8, render = r => Step(r, 950f, 0.9f, 0.18f, Surface.Grit) },
                 new Recipe { id = SoundId.StepConcrete, variations = 8, render = r => Step(r, 1500f, 1.3f, 0.1f, Surface.Hard) },
@@ -74,6 +76,8 @@ namespace Echoes.Audio
                 new Recipe { id = SoundId.BatHit, variations = 2, render = BatHit },
                 new Recipe { id = SoundId.Bandage, render = Bandage },
             };
+            all.AddRange(VoiceRecipes());
+            return all;
         }
 
         // ================================================================== player foley

@@ -2,6 +2,19 @@
 
 Newest first. Each entry: date, agent, what changed, what the owner still needs to test, known issues.
 
+## 2026-10-27 — Claude Code (Opus 5.5), phase 6a
+- Phase 5 and the camera fix were committed (`d1898fb`) at the owner's request. Phase 6 is split into steps 6a–6e (see `docs/DESIGN.md`).
+- Owner decisions: babble voices; English and Turkish lines shown together.
+- **6a, narrative foundation (code done):**
+  - `SynthLibraryVoice`: babble syllables for 9 voices (Daniel, Luis, Mia on the phone, the cloned Mia with glitches, Dispatch on the radio, generic male and female, a muffled Smiler, Det. Hale), plus phone ring, pickup, hangup, voicemail beep and radio squelch. Rendered offline: no NaN, even loudness.
+  - `DialogueDirector`: lines with syllables timed to the words, pitch declination and question rise; radio squelches; calls (ring ×2, auto pick-up, call timer on the HUD); voicemail.
+  - HUD: `ShowLine` (English on top, Turkish below), `ShowCall` / `HideCall`.
+  - `PurgeClock` (19:00 beat) with `StreetLight` on every street lamp (`PropFactory`).
+  - `DemoLines`: cold-open radio, Mia's voicemail, the cloned school call.
+  - `StoryDevHotkeys`: F5 and F6.
+- **Owner needs to test:** rebuild the scene (lamps need the new component). Press **F5**: radio traffic, then the voicemail, then an incoming call (listen to the babble, read the EN + TR lines, watch the call indicator at the top). Press **F6**: the clock jumps to 18:59:50; at 19:00 the EBS tone and sirens play, then the lamps die in a wave and some come back dim and flickering, then distant gunfire starts.
+- **Known issues / unverified:** not run in Unity yet. The voice quality is the main unknown; the syllable recipe can be tuned (formant table, `Syllable` lengths, `DialogueDirector` pacing).
+
 ## 2026-10-27 — Claude Code (Opus 5.5), camera jitter fix
 - The owner tested phase 5 and liked it. They reported a leftover from earlier phases: the camera trembles up and down even when standing still, and sometimes bobs too much when running.
 - Fixes:

@@ -58,7 +58,27 @@ Bodies vary in height, bulk, belly and male/female proportions.
 | 3 | Audio: synthesized foley, ambience, distant Purge events, Purge siren, reverb zones | **Done**, tested by the owner |
 | 4 | Combat + AI: pistol (own synthesized gunshot), bottle throw, damage, ragdoll, NPC FSM (patrol/suspicious/search/attack/flee/surrender), sight + hearing perception on the NavMesh | **Done**, committed by the owner (the melee animation and jitter fix were not explicitly confirmed) |
 | 5 | Characters: upgrade the basic segmented humanoid from phase 4 (better body shapes, clothing detail, IK feet, more masks such as pig and angel, smoother animation) | **Done**, tested by the owner (liked it) |
-| 6 | Narrative: dialogue + EN/TR subtitles, Ledger, phone calls, demo sequences 1–5, GameClock-driven 19:00 siren | |
+| 6 | Narrative: dialogue + EN/TR subtitles, Ledger, phone calls, demo sequences 1–5, GameClock-driven 19:00 siren | **In progress**, split into steps 6a–6e (below) |
 | 7 | Polish: main menu (VHS style), tape transitions, settings, shader warm-up (avoids the cyan placeholder flash on first play), performance, build | |
 
 The owner tests every phase in Play mode before the next one starts.
+
+### Phase 6 steps (agreed with the owner: each step is tested on its own)
+| Step | Content | Status |
+|---|---|---|
+| 6a | Narrative foundation: dialogue director, EN + TR subtitles, babble voices, phone call / voicemail / radio, 19:00 Purge beat (siren, blackout wave, emergency lamps), sample lines | **Code done**, awaiting the owner's test (F5, F6) |
+| 6b | Sequences 1–2: ambulance cold open, voicemail, siren, truck crash; Luis wounded (treat or leave → Ledger), movement/med-kit tutorial, first Smilers. Needs ambulance, truck, crash site | |
+| 6c | Sequence 3: gas station (hidden civilian, three looters; sneak, distract or fight; spare or execute). Needs the gas station | |
+| 6d | Sequence 4: alleys, the cloned "Daddy, come to the school" call, chase, a Smiler waves at the camera | |
+| 6e | Sequence 5: school door, Marine photo, "SMILE, DANNY. YOU'RE LIVE.", footage cuts, detective note, TO BE CONTINUED | |
+
+Phases 1–7 cover the 15-minute demo (Act 1). Acts 2–4 of the full game are not planned into phases yet; they will be planned after the demo.
+
+## Narrative decisions (phase 6)
+| Topic | Decision | Why |
+|---|---|---|
+| Voices | **Babble voices**: synthesized speech-like syllables timed to each line (no real words); meaning comes from subtitles. Phone and radio voices are band-limited and distorted | Owner's choice: no imported audio, and real TTS would sound robotic |
+| Subtitles | **Both languages**: the English line (the voice text, small, speaker name in colour) above the Turkish subtitle (larger). A setting to hide one comes in phase 7 | Owner's choice |
+| Cloned Mia | Labelled "MIA", exactly like the real Mia. Her voice is cleaner, then glitches (stutters, dropouts, digital crunch). She says **"Daddy"**, while the real Mia says **"Dad"**, and she mentions things Mia can't know ("Everyone's watching") | The hints must be subtle and only make sense in hindsight (proposed by the agent) |
+| Phone | Incoming calls ring twice, then Daniel answers on his own; there is no answer key | Keeps scripted calls simple (proposed by the agent; can change) |
+| 19:00 | EBS tone and sirens; about 9 s later the street lights die in a wave rolling out from the player, then about 55 % come back on emergency power (dim and failing). Before 19:00 the city is quiet (no distant Purge events) | "The street lights die" in the story, while keeping the streets readable as the owner wants |

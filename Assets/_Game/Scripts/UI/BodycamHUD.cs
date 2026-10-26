@@ -118,13 +118,76 @@ namespace Echoes.UI
             grainImg.color = new Color(1f, 1f, 1f, grainAlpha);
             scanImg.color = new Color(1f, 1f, 1f, scanlineAlpha);
 
-            if (subtitleText.text.Length > 0 && Time.time > subtitleUntil) subtitleText.text = "";
+            if (subtitleText.text.Length > 0 && Time.time > subtitleUntil)
+            {
+                subtitleText.text = "";
+                if (englishText != null) englishText.text = "";
+            }
         }
 
         public void ShowSubtitle(string text, float duration)
         {
             subtitleText.text = text;
+            if (englishText != null) englishText.text = "";
             subtitleUntil = Time.time + duration;
+        }
+
+        // ------------------------------------------------------------------ dialogue
+
+        Text englishText, callText;
+        string callLabel;
+        float callStart;
+        bool callRinging;
+
+        void EnsureDialogue()
+        {
+            if (englishText != null) return;
+            var sans = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            subtitleText.horizontalOverflow = HorizontalWrapMode.Wrap;
+            englishText = MakeText("SubtitleEN", 25, TextAnchor.LowerCenter, new Vector2(0.5f, 0), new Vector2(0, 160), new Color(0.82f, 0.82f, 0.8f, 0.92f));
+            englishText.font = sans;
+            englishText.horizontalOverflow = HorizontalWrapMode.Wrap;
+            englishText.rectTransform.sizeDelta = new Vector2(1400, 80);
+            callText = MakeText("Call", 26, TextAnchor.UpperCenter, new Vector2(0.5f, 1), new Vector2(0, -36), new Color(1f, 1f, 1f, 0.92f));
+        }
+
+        /// <summary>
+        /// A spoken line: the English voice text (small, speaker name in their colour) above the Turkish subtitle.
+        /// </summary>
+        public void ShowLine(string speaker, Color color, string en, string tr, float duration)
+        {
+            EnsureDialogue();
+            subtitleText.text = tr;
+            englishText.text = $"<color=#{ColorUtility.ToHtmlStringRGB(color)}>{speaker}:</color> {en}";
+            // Sit just above the Turkish block, however many lines it wraps to.
+            englishText.rectTransform.anchoredPosition = new Vector2(0f, 110f + subtitleText.preferredHeight + 6f);
+            subtitleUntil = Time.time + duration;
+        }
+
+        /// <summary>Phone call indicator at the top: ringing (blinking) or connected with a call timer.</summary>
+        public void ShowCall(string label, bool ringing)
+        {
+            EnsureDialogue();
+            callLabel = label;
+            callRinging = ringing;
+            callStart = Time.time;
+        }
+
+        public void HideCall()
+        {
+            callLabel = null;
+            if (callText != null) callText.text = "";
+        }
+
+        void UpdateCall()
+        {
+            if (callText == null || callLabel == null) return;
+            if (callRinging) callText.text = Mathf.Repeat(Time.time, 0.8f) < 0.5f ? "INCOMING CALL  ·  " + callLabel : "";
+            else
+            {
+                int s = Mathf.FloorToInt(Time.time - callStart);
+                callText.text = $"{callLabel}  ·  {s / 60:00}:{s % 60:00}";
+            }
         }
 
         public void SetPrompt(string text) => promptText.text = text ?? "";
@@ -208,6 +271,7 @@ namespace Echoes.UI
 
         void LateUpdate()
         {
+            UpdateCall();
             if (ammoText == null) return;
             if (ammoText.text.Length > 0 && Time.time > ammoUntil) ammoText.text = "";
             if (centerText.text.Length > 0 && Time.time > centerUntil) centerText.text = "";

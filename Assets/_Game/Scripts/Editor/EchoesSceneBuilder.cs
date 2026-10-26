@@ -10,6 +10,7 @@ using Echoes.AI;
 using Echoes.Audio;
 using Echoes.Combat;
 using Echoes.Core;
+using Echoes.Narrative;
 using Echoes.Player;
 using Echoes.Rendering;
 using Echoes.UI;
@@ -93,6 +94,9 @@ namespace Echoes.EditorTools
             var sys = new GameObject("Systems");
             sys.AddComponent<GameClock>();
             sys.AddComponent<CharacterLineup>();
+            sys.AddComponent<DialogueDirector>();
+            sys.AddComponent<PurgeClock>();
+            sys.AddComponent<StoryDevHotkeys>();
             new GameObject("Bodycam HUD").AddComponent<BodycamHUD>();
 
             var audio = new GameObject("Audio");
