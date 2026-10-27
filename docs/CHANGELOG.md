@@ -2,6 +2,11 @@
 
 Newest first. Each entry: date, agent, what changed, what the owner still needs to test, known issues.
 
+## 2026-10-28 — Claude Code (Opus 5.5), pre-public security check and template cleanup
+- Owner asked for a safety check before making the repository public (and pushes themselves from now on; don't try to push from the agent).
+- Scanned the whole history (every commit, not just the latest): no keys, tokens, passwords or credentials (only empty template fields such as `metroCertificatePassword`); no local paths of the owner's machine; no build outputs. Visible on purpose (owner's decision): the commit author e-mail, and the Unity organisation id / cloud project id in `ProjectSettings` (not credentials). The `/Users/danielbrauer/...` path in old history belongs to Unity's own template file.
+- Removed the Unity template leftovers (owner approved): `Assets/TutorialInfo` (with a Unity icon PNG), `Assets/Readme.asset`, `Assets/Scenes/SampleScene.unity` (also out of the Build Settings list). Kept `Assets/Settings/SampleSceneProfile.asset`: `PC_RPAsset` uses it as the pipeline's volume profile, so deleting it could change the look. Kept `InputSystem_Actions.inputactions` (the project-wide actions setting points at it).
+
 ## 2026-10-28 — Claude Code (Opus 5.5), phase 8a: the new cold open
 - Committed everything up to the 30-minute plan (`4894f3a`) after the owner's approval. **The push failed**: GitHub asked for credentials this session doesn't have (the two earlier commits were never pushed either). The owner pushes from their own terminal or GitHub Desktop.
 - 8a decisions with the owner (DESIGN, "New direction"): Rachel's voicemail dismissed unheard in the ambulance, the clone's whispered call, Vance's first trace at home (8b), a shorter intro card.

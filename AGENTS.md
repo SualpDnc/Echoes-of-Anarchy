@@ -13,6 +13,7 @@ it records the story, the decisions already made with the owner, and the phase p
 - The owner wants a **clean image**: no heavy grain, scanlines or chromatic aberration, and streets that are readable rather than very dark.
 - Owner feedback after the first build: dying must not send him back to the ambulance ride (checkpoints); the camera in the cab sat too low ("like a dwarf"); gunshots sounded like a drum (never use a tuned low sine in a shot); the dead must not keep talking; melee did too much damage (halved); all characters as realistic as possible.
 - **New goal (2026-10-28): a tight, exciting ~30-minute portfolio game** with one ending, rebuilt as a new flow scene by scene. Ask the owner before every design decision (see the last section of `docs/DESIGN.md`). `README.md` is the public portfolio page: keep it accurate when systems change.
+- The owner pushes to GitHub themselves: commit when approved, then tell them to push (the agent has no GitHub credentials). Never commit secrets, local paths or build outputs; the repository is meant to be public.
 
 ## Handoff rule: leave the project ready for the next agent
 The owner switches between agents (Claude Code, Codex, ...). Another agent with **no memory of your session** must be able to continue from the repo alone. Before you finish any piece of work:
