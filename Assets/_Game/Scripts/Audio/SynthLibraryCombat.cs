@@ -210,6 +210,28 @@ namespace Echoes.Audio
             return buf;
         }
 
+        /// <summary>Headshot: a dry bone crack inside a heavy wet slap, then a short tail of spattering droplets.</summary>
+        static float[] ImpactHead(Random r)
+        {
+            var buf = new float[Samples(0.45f)];
+            var crackBp = Biquad.BandPass(Range(r, 2200f, 3000f), 2f);
+            var lp = Biquad.LowPass(Range(r, 700f, 1000f));
+            var spl = Biquad.BandPass(Range(r, 1400f, 2000f), 1.2f);
+            float grain = 0f;
+            for (int i = 0; i < buf.Length; i++)
+            {
+                float t = (float)i / Rate;
+                float crack = crackBp.Process(White(r)) * Env(t, 0.0001f, 0.006f) * 3f;
+                float slap = lp.Process(White(r)) * Env(t - 0.002f, 0.001f, 0.06f) * 2.2f + Sin(TwoPi * 85f * t) * Env(t, 0.002f, 0.08f) * 1.2f;
+                if (r.NextDouble() < 0.0025) grain = 1f; // sparse wet ticks
+                grain *= 0.993f;
+                float tail = spl.Process(White(r)) * grain * Env(t - 0.03f, 0.01f, 0.18f) * 1.4f;
+                buf[i] = crack + slap + tail;
+            }
+            Normalize(buf, 0.85f);
+            return buf;
+        }
+
         /// <summary>A round passing within a metre: sharp N-wave crack, then a short tearing tail.</summary>
         static float[] Whizz(Random r)
         {
@@ -320,6 +342,58 @@ namespace Echoes.Audio
                 buf[i] = bp.Process(rip + rustle);
             }
             Normalize(buf, 0.5f);
+            return buf;
+        }
+
+        /// <summary>A mortar tube firing a shell close by: fuse fizz, a hollow thump, then the shell's whistle climbing away.</summary>
+        static float[] FireworkLaunch(Random r)
+        {
+            var buf = new float[Samples(2.2f)];
+            var thumpLp = Biquad.LowPass(260f);
+            var fizzBp = Biquad.BandPass(5200f, 0.8f);
+            float phase = 0f;
+            for (int i = 0; i < buf.Length; i++)
+            {
+                float t = (float)i / Rate;
+                float fizz = fizzBp.Process(White(r)) * (t < 0.12f ? 0.5f : 0f);
+                float thump = thumpLp.Process(White(r)) * Env(t - 0.1f, 0.002f, 0.06f) * 3f + Sin(TwoPi * 85f * (t - 0.1f)) * Env(t - 0.1f, 0.001f, 0.07f) * 0.9f;
+                float tw = t - 0.15f;
+                float whistle = 0f;
+                if (tw > 0f)
+                {
+                    phase += Lerp(900f, 2600f, Clamp01(tw / 1.4f)) / Rate;
+                    whistle = (Sin(TwoPi * phase) * 0.22f + White(r) * 0.04f) * Clamp01(tw / 0.15f) * Exp(-tw / 0.9f); // fades as it climbs
+                }
+                buf[i] = fizz + thump + whistle;
+            }
+            ApplyReverb(buf, 0.6f, 0.4f, 0.25f);
+            Normalize(buf, 0.8f);
+            return buf;
+        }
+
+        /// <summary>The shell bursting overhead: a hard crack, a boom that rolls off the buildings, a long crackle as the stars fall.</summary>
+        static float[] FireworkBurst(Random r)
+        {
+            var buf = new float[Samples(4.5f)];
+            var crackHp = new OnePoleHP(1200f);
+            var boomLp = Biquad.LowPass(380f);
+            for (int i = 0; i < buf.Length; i++)
+            {
+                float t = (float)i / Rate;
+                buf[i] = crackHp.Process(White(r)) * Env(t, 0.0002f, 0.012f) * 2f
+                       + boomLp.Process(White(r)) * Env(t, 0.003f, 0.35f) * 2.2f
+                       + Sin(TwoPi * 48f * t) * Env(t, 0.004f, 0.25f) * 0.8f;
+            }
+            // Crackle: hundreds of tiny pops spread over the fall of the stars.
+            for (int k = 0; k < 260; k++)
+            {
+                int s0 = Samples(0.35f + Range(r, 0f, 2.6f)), len = Samples(Range(r, 0.003f, 0.012f));
+                float a = Range(r, 0.08f, 0.35f);
+                for (int j = 0; j < len && s0 + j < buf.Length; j++) buf[s0 + j] += White(r) * a * (1f - (float)j / len);
+            }
+            ApplyReverb(buf, 0.9f, 0.35f, 0.45f);
+            Normalize(buf, 0.9f);
+            Fade(buf, 0f, 0.6f);
             return buf;
         }
     }

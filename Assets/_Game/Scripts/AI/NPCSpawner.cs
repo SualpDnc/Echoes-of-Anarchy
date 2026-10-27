@@ -5,7 +5,7 @@ namespace Echoes.AI
 {
     /// <summary>
     /// Spawns a group of procedural NPCs on the NavMesh at Start (after RuntimeNavMesh has baked).
-    /// Characters are built at runtime so the saved scene stays small.
+    /// Characters are built at runtime so the saved scene stays small. Story scenes place single NPCs with `Create`.
     /// </summary>
     public class NPCSpawner : MonoBehaviour
     {
@@ -23,16 +23,27 @@ namespace Echoes.AI
             for (int i = 0; i < count; i++)
             {
                 Vector3 p = transform.position + new Vector3(((float)rng.NextDouble() - 0.5f) * 2f * spread, 0f, ((float)rng.NextDouble() - 0.5f) * 2f * spread);
-                if (!NavMesh.SamplePosition(p, out NavMeshHit hit, 6f, NavMesh.AllAreas)) continue;
-                Spawn(hit.position, rng.Next(), rng);
+                int npcSeed = rng.Next();
+                float yaw = (float)rng.NextDouble() * 360f;
+                var weapon = faction == Faction.Smiler ? NPCWeapon.Pistol : faction == Faction.Civilian ? NPCWeapon.None
+                           : rng.NextDouble() < pistolChance ? NPCWeapon.Pistol : NPCWeapon.Bat;
+                var npcRng = new System.Random(npcSeed);
+                Create(CharacterLook.Random(faction, npcRng), npcRng, p, yaw, weapon, stationary, patrolRadius);
             }
         }
 
-        NPCBrain Spawn(Vector3 pos, int npcSeed, System.Random rng)
+        /// <summary>
+        /// Builds one NPC at `pos` on the NavMesh with the faction's defaults (health, skill, courage, ranges).
+        /// Callers can change the brain's fields afterwards (before its Start runs, i.e. in the same frame).
+        /// Returns null if there is no NavMesh nearby.
+        /// </summary>
+        public static NPCBrain Create(CharacterLook look, System.Random rng, Vector3 pos, float yaw, NPCWeapon weapon, bool stationary, float patrolRadius)
         {
-            var rig = HumanoidBuilder.Build(null, faction, npcSeed, out var health);
+            if (!NavMesh.SamplePosition(pos, out NavMeshHit hit, 6f, NavMesh.AllAreas)) return null;
+            pos = hit.position;
+            var rig = HumanoidBuilder.Build(null, look, rng, out var health);
             var go = rig.gameObject;
-            go.transform.SetPositionAndRotation(pos, Quaternion.Euler(0f, (float)rng.NextDouble() * 360f, 0f));
+            go.transform.SetPositionAndRotation(pos, Quaternion.Euler(0f, yaw, 0f));
 
             var agent = go.AddComponent<NavMeshAgent>();
             agent.radius = 0.3f;
@@ -47,26 +58,24 @@ namespace Echoes.AI
             go.AddComponent<Perception>();
             go.AddComponent<ProcAnimator>();
             var brain = go.AddComponent<NPCBrain>();
-            brain.faction = faction;
+            brain.faction = look.faction;
             brain.home = pos;
             brain.stationary = stationary;
             brain.patrolRadius = patrolRadius;
-            switch (faction)
+            brain.weapon = weapon;
+            switch (look.faction)
             {
                 case Faction.Smiler:
                     health.maxHealth = 120f;
-                    brain.weapon = NPCWeapon.Pistol;
                     brain.skill = 0.55f + (float)rng.NextDouble() * 0.2f;
                     brain.courage = 0.95f;
                     brain.minRange = 8f; brain.maxRange = 18f;
                     break;
                 case Faction.Civilian:
                     health.maxHealth = 80f;
-                    brain.weapon = NPCWeapon.None;
                     brain.courage = 0.1f;
                     break;
                 default:
-                    brain.weapon = rng.NextDouble() < pistolChance ? NPCWeapon.Pistol : NPCWeapon.Bat;
                     brain.skill = 0.25f + (float)rng.NextDouble() * 0.2f;
                     brain.courage = 0.35f + (float)rng.NextDouble() * 0.25f;
                     brain.minRange = 5f; brain.maxRange = 13f;

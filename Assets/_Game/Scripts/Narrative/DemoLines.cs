@@ -140,6 +140,89 @@ namespace Echoes.Narrative
         public static Line LuisAbandoned => L(Speaker.Luis, "Danny? Danny, don't... don't leave me here!",
                                               "Danny? Danny, yapma... beni burada bırakma!");
 
+        // ------------------------------------------------------------------ sequence 3: the gas station
+
+        /// <summary>The looters talking while they work (positional): how the player finds them before they find him.</summary>
+        public static Line LooterChatter(int i)
+        {
+            switch (i % 5)
+            {
+                case 0: return L(Speaker.Looter, "Grab the smokes. All of them.", "Sigaraları al. Hepsini.");
+                case 1: return L(Speaker.Looter, "Hurry up, man. The Smilers are out tonight.", "Acele et be. Bu gece Smiler'lar dışarıda.");
+                case 2: return L(Speaker.Looter, "Register's empty. Who keeps cash anymore?", "Kasa boş. Artık kim nakit tutar ki?");
+                case 3: return L(Speaker.Looter, "Shut up and fill the bag.", "Kes sesini de çantayı doldur.");
+                default: return L(Speaker.Looter, "You hear that? ...Nah. Nothing.", "Duydun mu? ...Yok. Bir şey yok.");
+            }
+        }
+
+        public static Line StationSurrender => L(Speaker.Looter, "Don't shoot! I'm done, man, I'm done!", "Ateş etme! Bıraktım abi, bıraktım!");
+        public static Line StationSpared => L(Speaker.Looter, "Thank you... thank you, man.", "Sağ ol... sağ ol abi.");
+
+        /// <summary>The clerk hiding behind the counter.</summary>
+        public static Line[] ClerkTalk => new[]
+        {
+            L(Speaker.CivilianWoman, "Don't— please. I don't have anything.", "Yapma— lütfen. Bende hiçbir şey yok."),
+            L(Speaker.Daniel, "I'm a paramedic. Are you hurt?", "Ben sağlık görevlisiyim. Yaralı mısın?"),
+            L(Speaker.CivilianWoman, "No... They came in through the back. The gate's open. Go, before more come.",
+                                     "Hayır... Arkadan girdiler. Bahçe kapısı açık. Başkaları gelmeden git."),
+            L(Speaker.CivilianWoman, "Here. Bottles from the back. Throw them, they'll chase the noise.",
+                                     "Al. Arkadan şişeler. Fırlat, sesin peşinden giderler."),
+            L(Speaker.Daniel, "Lock the door behind me.", "Arkamdan kapıyı kilitle."),
+        };
+
+        public static Line ClerkAgain => L(Speaker.CivilianWoman, "Just go. Please.", "Git artık. Lütfen.");
+
+        /// <summary>Through the back gate. Luis checks in if he has the radio.</summary>
+        public static Line[] PastTheStationRadio => new[]
+        {
+            L(Speaker.LuisRadio, "Danny? You made it past them? Good. Keep moving.", "Danny? Onları geçtin mi? Güzel. Devam et."),
+            L(Speaker.Daniel, "I'm through.", "Geçtim.").Via(LineChannel.Radio),
+        };
+
+        // ------------------------------------------------------------------ sequence 4: the alleys
+
+        public static Line AfterSchoolCall => L(Speaker.Daniel, "Hold on, sweetheart. I'm coming.", "Dayan tatlım. Geliyorum.");
+
+        /// <summary>Luis (radio) after the call: the school has power in a blacked-out city.</summary>
+        public static Line[] SchoolPowerRadio => new[]
+        {
+            L(Speaker.LuisRadio, "Danny, Dispatch says there's power at the school on Kessler. The whole grid's down and it's lit up like a stage.",
+                                 "Danny, Merkez Kessler'daki okulda elektrik olduğunu söylüyor. Bütün şebeke çökmüş, orası sahne gibi ışıl ışıl."),
+            L(Speaker.Daniel, "That's where she is.", "Mia orada.").Via(LineChannel.Radio),
+        };
+
+        /// <summary>The hunters come through the station's back gate.</summary>
+        public static Line[] ChaseStart => new[]
+        {
+            L(Speaker.Smiler, "There he is! Smile, Danny!", "İşte orada! Gülümse, Danny!"),
+            L(Speaker.Smiler, "Relax, Danny, nobody's killing you! Can't let the fun end this early!",
+                              "Rahat ol Danny, seni öldürmeyeceğiz! Keyif hemen bitmesin!"),
+            L(Speaker.Smiler, "Run, Danny! Chat wants a chase!", "Koş, Danny! Sohbet kovalamaca istiyor!"),
+        };
+
+        /// <summary>After the first rounds crack past him: they really are missing on purpose.</summary>
+        public static Line ChaseWarningShots => L(Speaker.Smiler, "Those were warning shots, Danny! Keep running!",
+                                                  "Onlar uyarı atışıydı, Danny! Koşmaya devam!");
+
+        /// <summary>If Luis was left behind, they make sure Daniel knows what that cost.</summary>
+        public static Line ChaseLuisTaunt => L(Speaker.Smiler, "Your buddy screamed your name, Danny! Over and over!",
+                                               "Arkadaşın adını bağırdı, Danny! Defalarca!");
+
+        public static Line ChaseRadio => L(Speaker.LuisRadio, "Danny, I can hear them laughing on the band. They're right behind you. Don't stop!",
+                                           "Danny, telsizde gülüşlerini duyuyorum. Hemen arkandalar. Durma!");
+
+        /// <summary>Daniel crawled under the shutter; they can't follow. They don't sound like they mind.</summary>
+        public static Line[] ChaseLost => new[]
+        {
+            L(Speaker.Smiler, "Aw, he's shy!", "Ay, utangaçmış!"),
+            L(Speaker.Smiler, "See you at school, Danny!", "Okulda görüşürüz, Danny!"),
+        };
+
+        public static Line ChaseFence => L(Speaker.Daniel, "Fenced off— the garage. Under the shutter!", "Çit var— garaj. Panjurun altından!");
+        public static Line ChaseDeadEnd => L(Speaker.Daniel, "Dead end. Back, north!", "Çıkmaz. Geri, kuzeye!");
+
+        public static Line FireworkSeen => L(Speaker.Daniel, "A grin... They're putting on a show.", "Bir sırıtış... Gösteri yapıyorlar.");
+
         /// <summary>The alley call (sequence 4). Not her: "Daddy", the glitches, and the stream she couldn't know about.</summary>
         public static Line[] SchoolCall => new[]
         {

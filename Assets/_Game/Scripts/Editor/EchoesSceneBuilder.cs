@@ -113,6 +113,8 @@ namespace Echoes.EditorTools
             var go = new GameObject("Demo");
             go.AddComponent<ColdOpenSequence>();
             go.AddComponent<CrashSiteSequence>();
+            go.AddComponent<GasStationSequence>();
+            go.AddComponent<AlleySequence>();
             go.AddComponent<DemoDirector>().fx = fx;
         }
 
@@ -128,7 +130,7 @@ namespace Echoes.EditorTools
                 s.faction = f; s.count = count; s.spread = spread; s.pistolChance = pistols;
                 s.stationary = stationary; s.patrolRadius = patrol; s.seed = seed;
             }
-            Spawner("Looters_Barrel", new Vector3(-7f, 0.15f, -60f), Faction.Looter, 3, 2.5f, 0.35f, true, 4f, 11);
+            // The barrel looters are now the gas station's (GasStationSequence).
             Spawner("Civilian_Doorway", new Vector3(9.3f, 0.15f, -31f), Faction.Civilian, 1, 0.5f, 0f, true, 2f, 12);
             Spawner("Looters_Alley", new Vector3(27f, 0.15f, -30f), Faction.Looter, 2, 2f, 0.5f, false, 10f, 13);
             // The intersection Smilers are now the scripted watchers of sequence 2 (CrashSiteSequence).

@@ -59,8 +59,16 @@ namespace Echoes.World
             props.SetParent(root, false);
             StreetProps(pal, fx, props, rng);
             Skyline(pal, root, rng);
+            // Gas station (sequence 3). Uses its own rng and clears its lot after the rows are built, so every other
+            // building and prop stays exactly as it was.
+            GasStationLot(pal, fx, buildings, props, seed);
+            // The back alleys and the school (sequence 4), on the empty block behind the west row; own rng as well.
+            AlleyBuilder.Build(pal, fx, props, new System.Random(seed + 404));
 
             for (float z = -85f; z <= 95f; z += 30f) res.probePoints.Add(new Vector3(0f, 2.5f, z));
+            res.probePoints.Add(new Vector3(-64f, 2.5f, -60f));
+            res.probePoints.Add(new Vector3(-82f, 2.5f, -36f));
+            res.probePoints.Add(new Vector3(-86f, 3f, -14f));
             res.probePoints.Add(new Vector3(-50f, 2.5f, CrossZ));
             res.probePoints.Add(new Vector3(50f, 2.5f, CrossZ));
             res.probePoints.Add(new Vector3((AlleyX0 + AlleyX1) / 2f, 2.5f, -40f));
@@ -276,7 +284,49 @@ namespace Echoes.World
             }
         }
 
-        static void BurningBarrel(Palette pal, FireFX.Materials fx, Transform parent, Vector3 pos)
+        /// <summary>
+        /// Removes the west-row buildings that stand on the gas station lot, builds the station in the gap, and closes
+        /// Harlow just south of it (barriers and a burning wreck), so the way on is through the station.
+        /// </summary>
+        static void GasStationLot(Palette pal, FireFX.Materials fx, Transform buildings, Transform props, int seed)
+        {
+            float gapMin = GasStationBuilder.LotZMin, gapMax = GasStationBuilder.LotZMax;
+            var doomed = new List<GameObject>();
+            foreach (Transform b in buildings)
+            {
+                var rs = b.GetComponentsInChildren<Renderer>();
+                if (rs.Length == 0) continue;
+                var bounds = rs[0].bounds;
+                foreach (var r in rs) bounds.Encapsulate(r.bounds);
+                bool westRow = bounds.center.x < -Facade && bounds.center.x > -Facade - 16f;
+                if (!westRow || bounds.max.z <= GasStationBuilder.LotZMin + 0.1f || bounds.min.z >= GasStationBuilder.LotZMax - 0.1f) continue;
+                gapMin = Mathf.Min(gapMin, bounds.min.z);
+                gapMax = Mathf.Max(gapMax, bounds.max.z);
+                doomed.Add(b.gameObject);
+            }
+            foreach (var go in doomed) Object.DestroyImmediate(go);
+
+            var rng = new System.Random(seed + 303);
+            GasStationBuilder.Build(pal, fx, props, gapMin, gapMax, rng);
+
+            // Harlow closed south of the station: barriers kerb to kerb, a burnt-out car on fire, an invisible wall.
+            const float z = -95f;
+            for (int i = 0; i < 7; i++)
+            {
+                float x = -9.6f + i * 3.2f;
+                PropFactory.JerseyBarrier(pal, props, new Vector3(x, Mathf.Abs(x) > RoadHalf ? Curb : 0f, z + Range(rng, -0.3f, 0.3f)), 90f + Range(rng, -8f, 8f));
+            }
+            var wreck = PropFactory.Sedan(pal, props, new Vector3(1.5f, 0f, z - 2.5f), 25f, pal.carPaint[0], true, rng);
+            FireFX.Fire(fx, props, wreck.transform.position + Vector3.up * 0.9f, 1.4f, true, false);
+            var wall = new GameObject("RoadClosed");
+            wall.transform.SetParent(props, false);
+            var bc = wall.AddComponent<BoxCollider>();
+            bc.center = new Vector3(0f, 1.5f, z);
+            bc.size = new Vector3(Facade * 2f, 3f, 1f);
+            wall.isStatic = true;
+        }
+
+        internal static void BurningBarrel(Palette pal, FireFX.Materials fx, Transform parent, Vector3 pos)
         {
             var mb = new MeshBuilder();
             mb.Cylinder(pal.rustyMetal, Vector3.zero, 0.29f, 0.88f, 16, false);

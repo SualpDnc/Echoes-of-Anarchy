@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using UnityEngine;
 
 namespace Echoes.Rendering
@@ -151,6 +152,100 @@ namespace Echoes.Rendering
             tex.SetPixels32(px);
             tex.Apply(true, true);
             return dot = tex;
+        }
+
+        // ------------------------------------------------------------------ blood (RGB = thickness shading, tinted by the material)
+
+        static Texture2D bloodSplat, bloodSpatter, bloodPool;
+
+        /// <summary>A round splat with a ragged rim and satellite droplets (drips, hits on the ground).</summary>
+        public static Texture2D BloodSplat(int size = 128)
+        {
+            if (bloodSplat != null) return bloodSplat;
+            var rng = new System.Random(71);
+            var drops = new List<Vector4>(); // x, y, radius, stretch
+            for (int i = 0; i < 14; i++)
+            {
+                float a = (float)rng.NextDouble() * Mathf.PI * 2f, d = 0.5f + (float)rng.NextDouble() * 0.42f;
+                drops.Add(new Vector4(Mathf.Cos(a) * d, Mathf.Sin(a) * d, Mathf.Lerp(0.07f, 0.02f, (d - 0.5f) / 0.42f), 1f));
+            }
+            return bloodSplat = BloodTex(size, "BloodSplat", (u, v) =>
+            {
+                float r = Mathf.Sqrt(u * u + v * v), a = Mathf.Atan2(v, u);
+                float rim = 0.4f + (Mathf.PerlinNoise(Mathf.Cos(a) * 1.7f + 11f, Mathf.Sin(a) * 1.7f + 3f) - 0.5f) * 0.22f;
+                float blob = 1f - Mathf.SmoothStep(rim - 0.03f, rim + 0.01f, r);
+                return Mathf.Max(blob, Droplets(drops, u, v, Vector2.zero));
+            });
+        }
+
+        /// <summary>Directional exit spatter: a heavy blob at the bottom, streaks and droplets thrown toward +V.</summary>
+        public static Texture2D BloodSpatter(int size = 128)
+        {
+            if (bloodSpatter != null) return bloodSpatter;
+            var rng = new System.Random(72);
+            var drops = new List<Vector4>();
+            for (int i = 0; i < 46; i++)
+            {
+                float spread = ((float)rng.NextDouble() - 0.5f) * 1.2f;   // ±35°
+                float d = Mathf.Pow((float)rng.NextDouble(), 0.8f) * 1.35f;
+                drops.Add(new Vector4(Mathf.Sin(spread) * d, -0.55f + Mathf.Cos(spread) * d,
+                                      Mathf.Lerp(0.085f, 0.014f, d / 1.35f) * (0.6f + (float)rng.NextDouble() * 0.6f), 1f + d * 1.8f));
+            }
+            return bloodSpatter = BloodTex(size, "BloodSpatter", (u, v) =>
+            {
+                float du = u, dv = v + 0.55f;
+                float r = Mathf.Sqrt(du * du * 1.2f + dv * dv), a = Mathf.Atan2(dv, du);
+                float rim = 0.26f + (Mathf.PerlinNoise(Mathf.Cos(a) * 2f + 4f, Mathf.Sin(a) * 2f + 9f) - 0.5f) * 0.16f;
+                float blob = 1f - Mathf.SmoothStep(rim - 0.03f, rim + 0.01f, r);
+                return Mathf.Max(blob, Droplets(drops, u, v, new Vector2(0f, -0.55f)));
+            });
+        }
+
+        /// <summary>A pool under a body: one smooth, wide, wet blob with a low-frequency rim.</summary>
+        public static Texture2D BloodPool(int size = 128)
+        {
+            if (bloodPool != null) return bloodPool;
+            return bloodPool = BloodTex(size, "BloodPool", (u, v) =>
+            {
+                float r = Mathf.Sqrt(u * u + v * v), a = Mathf.Atan2(v, u);
+                float rim = 0.78f + (Mathf.PerlinNoise(Mathf.Cos(a) * 1.1f + 21f, Mathf.Sin(a) * 1.1f + 6f) - 0.5f) * 0.4f;
+                return 1f - Mathf.SmoothStep(rim - 0.025f, rim + 0.005f, r);
+            });
+        }
+
+        /// <summary>Droplets as ellipses stretched away from the source point (x, y = centre, z = radius, w = stretch).</summary>
+        static float Droplets(List<Vector4> drops, float u, float v, Vector2 source)
+        {
+            float best = 0f;
+            foreach (var d in drops)
+            {
+                Vector2 axis = new Vector2(d.x - source.x, d.y - source.y);
+                axis = axis.sqrMagnitude > 1e-4f ? axis.normalized : Vector2.up;
+                float pu = u - d.x, pv = v - d.y;
+                float along = (pu * axis.x + pv * axis.y) / (d.z * d.w), across = (pu * -axis.y + pv * axis.x) / d.z;
+                float e = along * along + across * across;
+                best = Mathf.Max(best, 1f - Mathf.SmoothStep(0.75f, 1f, e));
+            }
+            return best;
+        }
+
+        /// <summary>Alpha from a coverage function over [-1, 1]²; RGB darkens where the blood is thick (the middle).</summary>
+        static Texture2D BloodTex(int size, string name, System.Func<float, float, float> coverage)
+        {
+            var tex = NewTex(size, size, TextureFormat.RGBA32, TextureWrapMode.Clamp, name, true);
+            var px = new Color32[size * size];
+            for (int y = 0; y < size; y++)
+            for (int x = 0; x < size; x++)
+            {
+                float u = (x + 0.5f) / size * 2f - 1f, v = (y + 0.5f) / size * 2f - 1f;
+                float a = Mathf.Clamp01(coverage(u, v));
+                float thick = Mathf.Clamp01(1f - Mathf.Sqrt(u * u + v * v)) * 0.35f + Mathf.PerlinNoise(u * 4f + 30f, v * 4f + 2f) * 0.15f;
+                byte shade = (byte)(Mathf.Lerp(255f, 150f, thick));
+                px[y * size + x] = new Color32(shade, shade, shade, (byte)(a * 245f));
+            }
+            tex.SetPixels32(px);
+            tex.Apply(true, true);
+            return tex;
         }
 
         static Texture2D NewTex(int w, int h, TextureFormat fmt, TextureWrapMode wrap, string name, bool mips = false)

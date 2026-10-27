@@ -20,6 +20,8 @@ namespace Echoes.AI
     {
         public static readonly List<NPCBrain> All = new List<NPCBrain>();
         public static event System.Action<NPCBrain> AnyDied;
+        /// <summary>Raised when an NPC gives up (story scenes give him a line and the player the choice).</summary>
+        public static event System.Action<NPCBrain> AnySurrendered;
 
         [Header("Identity")]
         public Faction faction = Faction.Looter;
@@ -31,6 +33,8 @@ namespace Echoes.AI
         public Vector3 home;
         public float patrolRadius = 8f;
         public bool stationary;
+        [Tooltip("Starts hidden and cowering (a civilian behind a counter).")]
+        public bool startCowering;
 
         [Header("Combat")]
         public float minRange = 6f, maxRange = 16f;
@@ -38,6 +42,12 @@ namespace Echoes.AI
         public float maxFireRange = 26f;
         public float shotDamage = 22f;
         public float meleeDamage = 24f;
+
+        [Header("Story chase")]
+        [Tooltip("Runs Daniel down wherever he is and, until he hurts one of them, only shoots to scare and hits to hurt (the Smilers want him alive, on camera).")]
+        public bool hunting;
+        /// <summary>Daniel has hurt one of the hunters: from now on they shoot to hit.</summary>
+        public bool HuntProvoked { get; private set; }
 
         public NPCState State { get; private set; }
 
@@ -101,7 +111,14 @@ namespace Echoes.AI
             if (home == Vector3.zero) home = transform.position;
             Arm();
             CarryLight();
-            SetState(stationary ? NPCState.Idle : NPCState.Patrol);
+            if (hunting && player != null) { perception.ForceAlert(player.position); SetState(NPCState.Attack); }
+            else SetState(startCowering ? NPCState.Cower : stationary ? NPCState.Idle : NPCState.Patrol);
+        }
+
+        /// <summary>Gives up on the spot (story scenes make sure someone does).</summary>
+        public void Surrender()
+        {
+            if (State != NPCState.Dead && State != NPCState.Surrender) SetState(NPCState.Surrender);
         }
 
         void Arm()
@@ -185,7 +202,7 @@ namespace Echoes.AI
                 case NPCState.Search: agent.speed = 2.2f; searchPoints = 3; Go(perception.LastSeenPos); break;
                 case NPCState.Attack: reactionReadyAt = Time.time + Random.Range(0.75f, 1.3f) * (1.6f - skill); burstLeft = 0; lostSight = 0f; shotsThisEngagement = 0; break;
                 case NPCState.Flee: agent.speed = 4.6f; FleeFrom(player != null ? player.position : transform.position); break;
-                case NPCState.Surrender: Stop(); DropWeapon(); gameObject.AddComponent<SpareInteractable>().brain = this; break;
+                case NPCState.Surrender: Stop(); DropWeapon(); gameObject.AddComponent<SpareInteractable>().brain = this; AnySurrendered?.Invoke(this); break;
                 case NPCState.Cower: Stop(); anim.pose = ProcAnimator.Pose.Cower; break;
             }
         }
@@ -195,6 +212,8 @@ namespace Echoes.AI
             if (State == NPCState.Dead || player == null || !agent.isOnNavMesh) return;
             stateTime += Time.deltaTime;
             anim.lookTarget = null;
+            // Hunters never lose interest or go looking: they know where he is.
+            if (hunting && (State == NPCState.Idle || State == NPCState.Patrol || State == NPCState.Suspicious || State == NPCState.Search)) SetState(NPCState.Attack);
 
             switch (State)
             {
@@ -283,22 +302,23 @@ namespace Echoes.AI
 
             if (perception.CanSeePlayer) lostSight = 0f;
             else lostSight += Time.deltaTime;
-            if (lostSight > 4f) { SetState(NPCState.Search); return; }
+            if (lostSight > 4f && !hunting) { SetState(NPCState.Search); return; }
             if (playerHealth != null && playerHealth.IsDead) { agent.isStopped = true; anim.pose = ProcAnimator.Pose.Normal; return; }
 
             if (weapon == NPCWeapon.Bat) { TickMelee(target, dist); return; }
 
             if (!perception.CanSeePlayer)
             {
-                agent.speed = 3.8f;
-                Go(perception.LastSeenPos);
+                agent.speed = hunting ? 4.8f : 3.8f;
+                Go(hunting ? target : perception.LastSeenPos);
                 anim.pose = ProcAnimator.Pose.Normal;
                 return;
             }
 
-            // Range management + occasional strafe so they don't stand like targets.
+            // Range management + occasional strafe so they don't stand like targets. Hunters keep closing, gun up.
             agent.speed = 2.6f;
-            if (dist > maxRange) Go(target);
+            if (hunting) { agent.speed = dist > 10f ? 4.2f : 2.8f; if (dist > 5f) Go(target); else Stop(); }
+            else if (dist > maxRange) Go(target);
             else if (dist < minRange * 0.6f) Go(transform.position + (transform.position - target).normalized * 4f);
             else if (Time.time > nextStrafe)
             {
@@ -329,7 +349,7 @@ namespace Echoes.AI
 
         void TickMelee(Vector3 target, float dist)
         {
-            agent.speed = 4.3f;
+            agent.speed = hunting ? 4.8f : 4.3f;
             if (meleeSwinging)
             {
                 meleeT += Time.deltaTime / 0.6f;
@@ -341,7 +361,7 @@ namespace Echoes.AI
                     meleeHit = true;
                     if (dist < 2.1f && Vector3.Angle(transform.forward, target - transform.position) < 50f && playerHealth != null)
                     {
-                        playerHealth.ApplyDamage(new DamageInfo { amount = meleeDamage, point = target + Vector3.up * 1.4f, direction = transform.forward, source = gameObject });
+                        playerHealth.ApplyDamage(new DamageInfo { amount = hunting && !HuntProvoked ? meleeDamage * 0.5f : meleeDamage, point = target + Vector3.up * 1.4f, direction = transform.forward, source = gameObject });
                         if (AudioManager.Instance != null) AudioManager.Instance.PlayAt(SoundId.BatHit, target + Vector3.up * 1.4f, 1f, 1f, 1f, 30f, false);
                     }
                 }
@@ -400,6 +420,7 @@ namespace Echoes.AI
             float chance = (0.18f + skill * 0.4f) * Mathf.Lerp(0.5f, 1f, perception.PlayerVisibility) * Mathf.Lerp(1f, 0.55f, moving) * Mathf.Clamp01(1.1f - dist / 30f);
             // The opening shots of a fight always miss: the crack past his ear tells the player where it came from.
             if (shotsThisEngagement++ < 2) chance = 0f;
+            if (hunting && !HuntProvoked) chance = 0f; // herding: every round cracks past him
             if (body != null && body.IsCrouching) chance *= 0.8f;
             Vector3 dir;
             if (Random.value < chance)
@@ -478,6 +499,7 @@ namespace Echoes.AI
             if (State == NPCState.Dead) return;
             anim.Flinch(info.direction);
             if (info.fromPlayer && player != null && State != NPCState.Surrender) perception.ForceAlert(player.position);
+            if (hunting && info.fromPlayer) foreach (var b in All) if (b.hunting) b.HuntProvoked = true;
             morale -= info.amount / health.maxHealth * 0.9f;
 
             if (State == NPCState.Surrender || State == NPCState.Cower || faction == Faction.Smiler) { if (State != NPCState.Attack && faction == Faction.Smiler) SetState(NPCState.Attack); return; }
@@ -521,6 +543,7 @@ namespace Echoes.AI
             anim.enabled = false;
             if (TryGetComponent(out SpareInteractable s)) Destroy(s);
             rig.EnableRagdoll(vel, info);
+            ImpactFX.BloodPool(rig[Bone.Pelvis], health.transform);
             if (AudioManager.Instance != null) AudioManager.Instance.PlayAt(SoundId.BodyFall, transform.position, 0.8f, Random.Range(0.9f, 1.05f), 1.5f, 30f);
             AnyDied?.Invoke(this);
             enabled = false;

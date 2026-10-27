@@ -52,6 +52,30 @@ namespace Echoes.Rendering
             return cache[key] = m;
         }
 
+        /// <summary>
+        /// Alpha-blended Lit decal (blood): lit by the flashlight and lamps, with a wet highlight, unlike the unlit
+        /// particle decals. The texture's alpha cuts the shape; its RGB shades the tint. Emission (masked by the alpha)
+        /// keeps it from going black in the dark.
+        /// </summary>
+        public static Material Decal(string name, Texture tex, Color tint, float smoothness, Color? emission = null)
+        {
+            string key = "D" + name;
+            if (cache.TryGetValue(key, out var m) && m != null) return m;
+            m = new Material(Lit(tint, smoothness, 0f, emission)) { name = "RT_" + name, hideFlags = HideFlags.DontSave };
+            m.SetTexture("_BaseMap", tex);
+            m.SetFloat("_Surface", 1f);
+            m.SetFloat("_Blend", 0f); // alpha
+            m.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.SrcAlpha);
+            m.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            m.SetFloat("_SrcBlendAlpha", (float)UnityEngine.Rendering.BlendMode.One);
+            m.SetFloat("_DstBlendAlpha", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            m.SetFloat("_ZWrite", 0f);
+            m.SetOverrideTag("RenderType", "Transparent");
+            m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            m.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent - 10; // under bullet holes and particles
+            return cache[key] = m;
+        }
+
         /// <summary>Lit material with a synthesized fabric detail map (albedo multiplier + normal), tiled for metre UVs.</summary>
         public static Material Fabric(Color color, float smoothness, Fabric fabric, float metallic = 0f, Color? emission = null)
         {

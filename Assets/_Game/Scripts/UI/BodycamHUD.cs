@@ -22,6 +22,7 @@ namespace Echoes.UI
         static readonly string[] CompassPoints = { "N", "NE", "E", "SE", "S", "SW", "W", "NW" };
         RawImage grainImg, scanImg;
         Font mono;
+        public Font Mono => mono;
         float subtitleUntil;
 
         void Awake()
@@ -66,6 +67,8 @@ namespace Echoes.UI
             subtitleText.rectTransform.sizeDelta = new Vector2(1500, 200);
             promptText = MakeText("Prompt", 26, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), new Vector2(0, -90), new Color(1f, 1f, 1f, 0.85f));
             promptText.rectTransform.sizeDelta = new Vector2(900, 60);
+
+            gameObject.AddComponent<DamageNumbers>();
         }
 
         RawImage FullScreenRaw(string name, Texture tex, float alpha)

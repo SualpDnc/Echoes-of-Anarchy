@@ -8,14 +8,18 @@ namespace Echoes.AI
 {
     /// <summary>
     /// A scripted Smiler who only watches: stands at a distance facing Daniel, head light on, one of them holding a
-    /// phone up to film. When the scene says so (or when shot at) he turns and walks off, then is removed once out
-    /// of sight. No perception or combat: the first sighting is a promise, not a fight.
+    /// phone up to film (or waving, or kneeling to light a firework). When the scene says so (or when shot at) he turns
+    /// and walks off, then is removed once out of sight. No perception or combat: the first sighting is a promise, not a fight.
     /// </summary>
     [RequireComponent(typeof(HumanoidRig), typeof(ProcAnimator), typeof(NavMeshAgent))]
     public class SmilerWatcher : MonoBehaviour
     {
         public Vector3 leaveTo;
         public bool filming;
+        [Tooltip("Waves at Daniel's camera (at the stream, really) instead of standing still.")]
+        public bool waving;
+        [Tooltip("Down on one knee (lighting something on the ground).")]
+        public bool kneeling;
 
         public bool Leaving { get; private set; }
 
@@ -25,6 +29,7 @@ namespace Echoes.AI
         Health health;
         Transform cam;
         float unseenFor;
+        Transform waveHand;
 
         public static SmilerWatcher Spawn(Vector3 pos, float yaw, Vector3 leaveTo, bool filming, int seed)
         {
@@ -91,6 +96,9 @@ namespace Echoes.AI
             if (Leaving || health.IsDead) return;
             Leaving = true;
             filming = false;
+            waving = false;
+            kneeling = false;
+            anim.handTargetR = null;
             agent.updateRotation = true;
             agent.speed = run ? 4.4f : 1.4f;
             if (agent.isOnNavMesh) agent.SetDestination(leaveTo);
@@ -107,8 +115,9 @@ namespace Echoes.AI
                 if (to.sqrMagnitude > 0.01f)
                     transform.rotation = Quaternion.Slerp(transform.rotation, Quaternion.LookRotation(to), 1f - Mathf.Exp(-2f * Time.deltaTime));
                 anim.lookTarget = cam.position;
-                anim.pose = filming ? ProcAnimator.Pose.Aim : ProcAnimator.Pose.Normal;
+                anim.pose = kneeling ? ProcAnimator.Pose.Kneel : filming ? ProcAnimator.Pose.Aim : ProcAnimator.Pose.Normal;
                 anim.aimTarget = cam.position;
+                if (waving) Wave();
                 return;
             }
 
@@ -120,6 +129,21 @@ namespace Echoes.AI
             unseenFor = inView ? 0f : unseenFor + Time.deltaTime;
             bool arrived = !agent.pathPending && agent.remainingDistance < 1f;
             if (unseenFor > 3f || (arrived && !inView)) Destroy(gameObject);
+        }
+
+        /// <summary>Right hand up beside the head, swinging side to side: a slow, friendly, wrong wave.</summary>
+        void Wave()
+        {
+            if (waveHand == null)
+            {
+                waveHand = new GameObject("WaveTarget").transform;
+                waveHand.SetParent(transform, false);
+                anim.handTargetR = waveHand;
+                anim.handIK = 1f;
+            }
+            float h = rig[Bone.Head].position.y - transform.position.y;
+            float sway = Mathf.Sin(Time.time * 5.5f) * 0.2f;
+            waveHand.localPosition = new Vector3(0.32f + sway, h + 0.12f - Mathf.Abs(sway) * 0.25f, 0.18f);
         }
 
         void OnDamaged(DamageInfo info)

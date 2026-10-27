@@ -28,6 +28,9 @@ namespace Echoes.Combat
         public event Action<DamageInfo> Damaged;
         public event Action<DamageInfo> Died;
 
+        /// <summary>Any Health took damage (after hitbox multipliers): HUD damage numbers listen here.</summary>
+        public static event Action<Health, DamageInfo> AnyDamaged;
+
         void Awake() => Current = maxHealth;
 
         public void ApplyDamage(DamageInfo info)
@@ -35,6 +38,7 @@ namespace Echoes.Combat
             if (IsDead || info.amount <= 0f) return;
             Current = Mathf.Max(0f, Current - info.amount);
             Damaged?.Invoke(info);
+            AnyDamaged?.Invoke(this, info);
             if (Current <= 0f)
             {
                 IsDead = true;

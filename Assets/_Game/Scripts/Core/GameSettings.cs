@@ -29,5 +29,18 @@ namespace Echoes.Core
 
         /// <summary>The text for the chosen language.</summary>
         public static string Pick(string en, string tr) => Turkish ? tr : en;
+
+        const string DamageNumbersKey = "Echoes.DamageNumbers";
+
+        /// <summary>Faint damage numbers over hit enemies (on by default; F2 toggles until the settings menu).</summary>
+        public static bool DamageNumbers
+        {
+            get => PlayerPrefs.GetInt(DamageNumbersKey, 1) == 1;
+            set
+            {
+                PlayerPrefs.SetInt(DamageNumbersKey, value ? 1 : 0);
+                PlayerPrefs.Save();
+            }
+        }
     }
 }
