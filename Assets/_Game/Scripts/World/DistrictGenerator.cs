@@ -248,6 +248,9 @@ namespace Echoes.World
                     PropFactory.GarbageBag(pal, props, new Vector3(AlleyX0 + Range(rng, 0.4f, 1.2f), y, z + Range(rng, -3f, 3f)), rng);
             }
 
+            // The gas station's pylon (the station itself comes in phase 6c): the lit landmark Daniel heads for after the crash.
+            PropFactory.GasStationSign(pal, props, new Vector3(-8.6f, y, -75f), Vector3.forward);
+
             // Barricade line: someone tried to close the avenue.
             for (int i = 0; i < 4; i++)
                 PropFactory.JerseyBarrier(pal, props, new Vector3(-5f + i * 3.2f, 0f, 80f + (i % 2) * 0.6f), 90f + Range(rng, -12f, 12f));

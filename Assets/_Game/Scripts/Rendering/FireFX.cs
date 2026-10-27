@@ -7,6 +7,7 @@ namespace Echoes.Rendering
     /// <summary>Builds particle-based fire, ember, smoke and steam effects entirely from code.</summary>
     public static class FireFX
     {
+        [System.Serializable]
         public struct Materials
         {
             public Material flame, ember, smoke, steam;

@@ -123,6 +123,48 @@ namespace Echoes.World
             return l;
         }
 
+        /// <summary>
+        /// Tall gas-station pylon: a lit red panel with a white band and a price board, on two posts. It runs on the
+        /// station's own generator, so it stays lit through the blackout — a landmark down the street (and the reason
+        /// looters gather there). The panel faces `facing` and its back.
+        /// </summary>
+        public static GameObject GasStationSign(Palette pal, Transform parent, Vector3 pos, Vector3 facing)
+        {
+            var root = new GameObject("GasStationSign").transform;
+            root.SetParent(parent, false);
+            root.SetPositionAndRotation(pos, Quaternion.LookRotation(facing, Vector3.up));
+            var mb = new MeshBuilder();
+            foreach (float x in new[] { -0.7f, 0.7f }) mb.Box(pal.metalDark, new Vector3(x, 3.6f, 0f), new Vector3(0.22f, 7.2f, 0.22f));
+            mb.Box(pal.signRed, new Vector3(0f, 8.0f, 0f), new Vector3(2.6f, 1.6f, 0.35f));
+            mb.Box(pal.signWhite, new Vector3(0f, 7.45f, 0f), new Vector3(2.62f, 0.22f, 0.37f));
+            mb.Box(pal.metalDark, new Vector3(0f, 8.85f, 0f), new Vector3(2.7f, 0.1f, 0.4f));
+            // Price board: white panels with dark digit bars, both faces.
+            mb.Box(pal.signWhite, new Vector3(0f, 6.4f, 0f), new Vector3(2.2f, 1.3f, 0.25f));
+            for (int row = 0; row < 3; row++)
+                for (int k = 0; k < 3; k++)
+                    mb.Box(pal.metalDark, new Vector3(0.1f + k * 0.28f, 6.8f - row * 0.38f, 0f), new Vector3(0.18f, 0.24f, 0.27f));
+            for (int row = 0; row < 3; row++)
+                mb.Box(pal.metalDark, new Vector3(-0.6f, 6.8f - row * 0.38f, 0f), new Vector3(0.7f, 0.08f, 0.27f));
+            var go = mb.Build("Pylon", root);
+            go.isStatic = true;
+            foreach (float x in new[] { -0.7f, 0.7f })
+            {
+                var col = go.AddComponent<BoxCollider>();
+                col.center = new Vector3(x, 3.6f, 0f);
+                col.size = new Vector3(0.22f, 7.2f, 0.22f);
+            }
+            var lightGo = new GameObject("SignGlow", typeof(Light));
+            lightGo.transform.SetParent(root, false);
+            lightGo.transform.localPosition = new Vector3(0f, 5.4f, 0f);
+            var l = lightGo.GetComponent<Light>();
+            l.type = LightType.Point;
+            l.color = new Color(1f, 0.45f, 0.4f);
+            l.intensity = 2.5f;
+            l.range = 10f;
+            l.shadows = LightShadows.None;
+            return root.gameObject;
+        }
+
         public static GameObject Hydrant(Palette pal, Transform parent, Vector3 pos, float yaw)
         {
             var mb = new MeshBuilder();

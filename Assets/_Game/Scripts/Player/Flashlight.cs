@@ -60,5 +60,11 @@ namespace Echoes.Player
         }
 
         public bool IsOn => on;
+
+        public void SetOn(bool value)
+        {
+            on = value;
+            if (lamp != null) lamp.enabled = on;
+        }
     }
 }

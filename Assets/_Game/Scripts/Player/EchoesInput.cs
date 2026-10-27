@@ -16,23 +16,26 @@ namespace Echoes.Player
         public Vector2 Move { get; private set; }
         /// <summary>Look delta in degrees-equivalent units for this frame (mouse pixels or scaled stick).</summary>
         public Vector2 LookDelta { get; private set; }
-        public bool SprintHeld => sprint.IsPressed();
-        public bool CrouchHeld => crouchHold.IsPressed();
-        public bool CrouchTogglePressed => crouchToggle.WasPressedThisFrame();
-        public bool JumpPressed => jump.WasPressedThisFrame();
-        public float Lean => (leanRight.IsPressed() ? 1f : 0f) - (leanLeft.IsPressed() ? 1f : 0f);
-        public bool InteractPressed => interact.WasPressedThisFrame();
-        public bool FirePressed => fire.WasPressedThisFrame();
-        public bool FireHeld => fire.IsPressed();
-        public bool AimHeld => aim.IsPressed();
-        public bool ReloadPressed => reload.WasPressedThisFrame();
-        public bool ThrowPressed => throwItem.WasPressedThisFrame();
-        public bool FlashlightPressed => flashlight.WasPressedThisFrame();
+        public bool SprintHeld => Acts && sprint.IsPressed();
+        public bool CrouchHeld => Acts && crouchHold.IsPressed();
+        public bool CrouchTogglePressed => Acts && crouchToggle.WasPressedThisFrame();
+        public bool JumpPressed => Acts && jump.WasPressedThisFrame();
+        public float Lean => Acts ? (leanRight.IsPressed() ? 1f : 0f) - (leanLeft.IsPressed() ? 1f : 0f) : 0f;
+        public bool InteractPressed => Acts && interact.WasPressedThisFrame();
+        public bool FirePressed => Acts && fire.WasPressedThisFrame();
+        public bool FireHeld => Acts && fire.IsPressed();
+        public bool AimHeld => Acts && aim.IsPressed();
+        public bool ReloadPressed => Acts && reload.WasPressedThisFrame();
+        public bool ThrowPressed => Acts && throwItem.WasPressedThisFrame();
+        public bool FlashlightPressed => Acts && flashlight.WasPressedThisFrame();
         public bool PausePressed => pause.WasPressedThisFrame();
-        public bool HolsterPressed => holster.WasPressedThisFrame();
-        public bool HealPressed => heal.WasPressedThisFrame();
+        public bool HolsterPressed => Acts && holster.WasPressedThisFrame();
+        public bool HealPressed => Acts && heal.WasPressedThisFrame();
 
         public bool InputLocked { get; set; }
+        /// <summary>Cutscenes where Daniel can still look around (seated in the ambulance): no movement, no actions.</summary>
+        public bool LookOnly { get; set; }
+        bool Acts => !LookOnly && !InputLocked;
 
         void Awake()
         {
@@ -89,7 +92,7 @@ namespace Echoes.Player
                 LookDelta = Vector2.zero;
                 return;
             }
-            Move = Vector2.ClampMagnitude(move.ReadValue<Vector2>(), 1f);
+            Move = LookOnly ? Vector2.zero : Vector2.ClampMagnitude(move.ReadValue<Vector2>(), 1f);
             // Mouse delta is per-frame already; stick is a rate and must be scaled by time.
             LookDelta = look.ReadValue<Vector2>() + lookStick.ReadValue<Vector2>() * (Time.deltaTime * 1800f);
         }

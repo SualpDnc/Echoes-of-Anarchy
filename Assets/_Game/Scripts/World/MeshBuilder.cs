@@ -127,6 +127,24 @@ namespace Echoes.World
             t.Add(s); t.Add(s + 1); t.Add(s + 2);
         }
 
+        /// <summary>
+        /// Convex planar polygon (fan-triangulated), wound automatically to face `outward` (builder space), so callers
+        /// can list corners in any rotational order. twoSided also adds the back face (glass, thin panels).
+        /// </summary>
+        public void Polygon(Material m, Vector3 outward, bool twoSided, params Vector3[] pts)
+        {
+            if (pts.Length < 3) return;
+            Vector3 n = Vector3.zero;
+            for (int i = 1; i < pts.Length - 1; i++) n += Vector3.Cross(pts[i] - pts[0], pts[i + 1] - pts[0]);
+            bool flip = Vector3.Dot(n, outward) < 0f;
+            for (int i = 1; i < pts.Length - 1; i++)
+            {
+                Vector3 a = pts[0], b = pts[i], c = pts[i + 1];
+                if (flip) Tri(m, a, c, b); else Tri(m, a, b, c);
+                if (twoSided) { if (flip) Tri(m, a, b, c); else Tri(m, a, c, b); }
+            }
+        }
+
         /// <summary>Extrudes a closed 2D profile (XY plane, counter-clockwise) along Z by depth, with caps.</summary>
         public void Extrude(Material side, Material cap, IList<Vector2> profile, float zMin, float zMax)
         {

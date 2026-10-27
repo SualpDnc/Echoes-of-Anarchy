@@ -96,6 +96,8 @@ namespace Echoes.EditorTools
                 pal.signalAmber = Flat("SignalAmber", new Color(0.3f, 0.18f, 0.02f), 0.9f, 0f, new Color(1f, 0.55f, 0.08f) * 12f);
                 pal.signalOff = Flat("SignalOff", new Color(0.04f, 0.03f, 0.03f), 0.9f);
                 pal.lampGlass = Flat("LampGlass", new Color(0.8f, 0.6f, 0.4f), 0.9f, 0f, new Color(1f, 0.6f, 0.28f) * 8f);
+                pal.signRed = Flat("SignRed", new Color(0.4f, 0.03f, 0.02f), 0.8f, 0f, new Color(1f, 0.08f, 0.04f) * 5f);
+                pal.signWhite = Flat("SignWhite", new Color(0.7f, 0.7f, 0.68f), 0.8f, 0f, new Color(1f, 0.97f, 0.9f) * 3.5f);
                 pal.dirt = Flat("Dirt", new Color(0.035f, 0.03f, 0.026f), 0.15f);
 
                 fx = new FireFX.Materials

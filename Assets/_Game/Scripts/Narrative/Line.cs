@@ -3,7 +3,7 @@ using Echoes.Audio;
 
 namespace Echoes.Narrative
 {
-    public enum Speaker { Daniel, Mia, MiaClone, Luis, Dispatch, Smiler, Looter, Civilian, CivilianWoman, Hale }
+    public enum Speaker { Daniel, Mia, MiaClone, Luis, Dispatch, Smiler, Looter, Civilian, CivilianWoman, Hale, LuisRadio }
 
     /// <summary>Where a voice comes from: Daniel's own (chest mic), a person in the world, his phone, or the radio.</summary>
     public enum LineChannel { Self, World, Phone, Radio }
@@ -28,6 +28,7 @@ namespace Echoes.Narrative
                 case Speaker.Mia: return P("MIA", new Color(1f, 0.68f, 0.82f), SoundId.VoiceMiaPhone, LineChannel.Phone);
                 case Speaker.MiaClone: return P("MIA", new Color(1f, 0.68f, 0.82f), SoundId.VoiceMiaClone, LineChannel.Phone, 0.35f);
                 case Speaker.Luis: return P("LUIS", new Color(0.7f, 1f, 0.75f), SoundId.VoiceLuis, LineChannel.World);
+                case Speaker.LuisRadio: return P("LUIS", new Color(0.7f, 1f, 0.75f), SoundId.VoiceLuisRadio, LineChannel.Radio);
                 case Speaker.Dispatch: return P("DISPATCH", new Color(1f, 0.82f, 0.45f), SoundId.VoiceDispatch, LineChannel.Radio);
                 case Speaker.Smiler: return P("???", new Color(0.4f, 1f, 1f), SoundId.VoiceSmiler, LineChannel.World);
                 case Speaker.Looter: return P("LOOTER", new Color(1f, 0.55f, 0.45f), SoundId.VoiceMale, LineChannel.World);

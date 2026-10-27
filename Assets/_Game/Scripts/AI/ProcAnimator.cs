@@ -9,7 +9,7 @@ namespace Echoes.AI
     /// 1. Locomotion straight from the gait phase (no smoothing lag): hip/knee/ankle curves with push-off and heel
     ///    strike, pelvis bob/yaw/roll, counter-rotating torso, arm swing, plus idle breathing and weight shift,
     ///    leaning into acceleration and turns, and shuffling steps when turning on the spot.
-    /// 2. Poses (Aim, HandsUp, Kneel, Cower, Melee) blended in per bone, so legs keep walking while the arms aim.
+    /// 2. Poses (Aim, HandsUp, Kneel, Cower, Melee, Seated, Slumped) blended in per bone, so legs keep walking while the arms aim.
     /// 3. Additive: hit flinch, head look with neck limits and gaze stabilisation.
     /// 4. Foot IK: two-bone leg IK onto the ground under each foot (curbs, debris), the pelvis drops to reach the
     ///    lower foot, and planted soles tilt to the ground normal.
@@ -18,7 +18,7 @@ namespace Echoes.AI
     [RequireComponent(typeof(HumanoidRig))]
     public class ProcAnimator : MonoBehaviour
     {
-        public enum Pose { Normal, Aim, HandsUp, Kneel, Cower, Melee }
+        public enum Pose { Normal, Aim, HandsUp, Kneel, Cower, Melee, Seated, Slumped }
 
         public Pose pose = Pose.Normal;
         public Vector3? lookTarget;
@@ -32,6 +32,11 @@ namespace Echoes.AI
         public bool footIK = true;
         [Tooltip("No foot IK beyond this distance from the camera.")]
         public float ikDistance = 40f;
+
+        [Header("Hand IK")]
+        [Tooltip("Optional: wrists are pulled to these (hands on a steering wheel). Elbows keep the pose's bend.")]
+        public Transform handTargetL, handTargetR;
+        [Range(0f, 1f)] public float handIK = 1f;
 
         const int N = 16;
         static readonly RaycastHit[] hits = new RaycastHit[8];
@@ -61,6 +66,11 @@ namespace Echoes.AI
             clock = Random.value * 100f;
             prevYaw = transform.eulerAngles.y;
         }
+
+        bool snap;
+
+        /// <summary>Jumps straight to the current pose on the next frame (no blend), e.g. for a character placed mid-scene.</summary>
+        public void SnapToPose() => snap = true;
 
         public void Flinch(Vector3 worldDir)
         {
@@ -94,6 +104,13 @@ namespace Echoes.AI
 
             float bob = Locomotion(gait, run, moving);
             float targetCrouch = PoseTargets();
+            if (snap)
+            {
+                snap = false;
+                crouch = targetCrouch;
+                for (int i = 0; i < N; i++)
+                    if (overridden[i]) { poseRot[i] = target[i]; poseW[i] = 1f; }
+            }
             BlendPoses(dt);
             Additive(dt, gait);
 
@@ -110,6 +127,22 @@ namespace Echoes.AI
             var cam = Camera.main;
             if (cam != null && (cam.transform.position - transform.position).sqrMagnitude > ikDistance * ikDistance) ikW = 0f;
             FootIK(dt, ikW);
+            HandIK();
+        }
+
+        void HandIK()
+        {
+            if (handIK <= 0.001f) return;
+            Arm(handTargetL, Bone.UpperArmL, Bone.LowerArmL, Bone.HandL, -1f);
+            Arm(handTargetR, Bone.UpperArmR, Bone.LowerArmR, Bone.HandR, 1f);
+        }
+
+        void Arm(Transform target, Bone upper, Bone lower, Bone hand, float side)
+        {
+            if (target == null) return;
+            Transform h = rig[hand];
+            // Elbows hang down and a little out.
+            TwoBone(rig[upper], rig[lower], h, Vector3.Lerp(h.position, target.position, handIK), -transform.up + transform.right * side * 0.6f);
         }
 
         // ------------------------------------------------------------------ layer 1: locomotion
@@ -251,6 +284,48 @@ namespace Echoes.AI
                     Set(Bone.Spine, Quaternion.Euler(10f * strike, Mathf.Lerp(0f, 25f, wind) - strike * 45f, 0f));
                     return 0.05f * wind;
                 }
+                case Pose.Seated:
+                    // Driving: thighs forward, shins down to the pedals, leaning back a little, hands on the wheel.
+                    Set(Bone.Pelvis, Quaternion.identity);
+                    Set(Bone.UpperLegL, Quaternion.Euler(-82f, 0f, -4f));
+                    Set(Bone.UpperLegR, Quaternion.Euler(-82f, 0f, 4f));
+                    Set(Bone.LowerLegL, Quaternion.Euler(72f, 0f, 0f));
+                    Set(Bone.LowerLegR, Quaternion.Euler(72f, 0f, 0f));
+                    Set(Bone.FootL, Quaternion.Euler(10f, 0f, 0f));
+                    Set(Bone.FootR, Quaternion.Euler(10f, 0f, 0f));
+                    Set(Bone.Spine, Quaternion.Euler(-8f, 0f, 0f));
+                    Set(Bone.UpperArmL, Quaternion.Euler(-45f, 0f, 6f));
+                    Set(Bone.UpperArmR, Quaternion.Euler(-45f, 0f, -6f));
+                    Set(Bone.LowerArmL, Quaternion.Euler(-55f, 0f, 0f));
+                    Set(Bone.LowerArmR, Quaternion.Euler(-55f, 0f, 0f));
+                    Set(Bone.HandL, Quaternion.Euler(-10f, 0f, 0f));
+                    Set(Bone.HandR, Quaternion.Euler(-10f, 0f, 0f));
+                    return 0.45f; // pelvis 0.45 m below standing: on a seat cushion
+                case Pose.Slumped:
+                    // Sitting on the ground against a wall, hurt: one knee up, the bad leg out straight, a hand pressed on it.
+                    Set(Bone.Pelvis, Quaternion.identity);
+                    Set(Bone.UpperLegL, Quaternion.Euler(-70f, 0f, -12f));
+                    Set(Bone.LowerLegL, Quaternion.Euler(75f, 0f, 0f));
+                    Set(Bone.FootL, Quaternion.Euler(-5f, 0f, 0f));
+                    Set(Bone.UpperLegR, Quaternion.Euler(-88f, 0f, 10f));
+                    Set(Bone.LowerLegR, Quaternion.Euler(8f, 0f, 0f));
+                    Set(Bone.FootR, Quaternion.identity);
+                    Set(Bone.Spine, Quaternion.Euler(-18f, 0f, 4f));
+                    Set(Bone.Chest, Quaternion.Euler(-4f, 0f, 0f));
+                    Set(Bone.UpperArmR, Quaternion.Euler(-30f, 0f, -8f));
+                    Set(Bone.LowerArmR, Quaternion.Euler(-45f, 0f, 0f));
+                    Set(Bone.UpperArmL, Quaternion.Euler(-15f, 0f, -28f));
+                    Set(Bone.LowerArmL, Quaternion.Euler(-20f, 0f, 0f));
+                    if (aimTarget.HasValue)
+                    {
+                        // Pointing the way with the right arm (wider yaw than Aim: he can point off to his side).
+                        Vector3 local = transform.InverseTransformDirection(aimTarget.Value - rig[Bone.UpperArmR].position);
+                        float pitch = Mathf.Clamp(Mathf.Atan2(local.y, new Vector2(local.x, local.z).magnitude) * Mathf.Rad2Deg, -30f, 40f);
+                        float yaw = Mathf.Clamp(Mathf.Atan2(local.x, local.z) * Mathf.Rad2Deg, -30f, 110f);
+                        Set(Bone.UpperArmR, Quaternion.Euler(-88f - pitch, yaw, 0f));
+                        Set(Bone.LowerArmR, Quaternion.Euler(-6f, 0f, 0f));
+                    }
+                    return pelvisRest.y - 0.14f; // pelvis just above the ground
             }
             return 0f;
         }

@@ -29,6 +29,29 @@ namespace Echoes.Rendering
             return cache[key] = m;
         }
 
+        /// <summary>
+        /// Transparent Lit glass (premultiplied, so reflections and highlights stay bright while the body is see-through).
+        /// Used for vehicle windows the player looks out of.
+        /// </summary>
+        public static Material Glass(Color tint, float alpha, float smoothness = 0.95f)
+        {
+            string key = $"G{tint}{alpha}{smoothness}";
+            if (cache.TryGetValue(key, out var m) && m != null) return m;
+            m = new Material(Lit(new Color(tint.r, tint.g, tint.b, alpha), smoothness)) { name = "RT_Glass", hideFlags = HideFlags.DontSave };
+            m.SetFloat("_Surface", 1f);
+            m.SetFloat("_Blend", 1f); // premultiply
+            m.SetFloat("_SrcBlend", (float)UnityEngine.Rendering.BlendMode.One);
+            m.SetFloat("_DstBlend", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            m.SetFloat("_SrcBlendAlpha", (float)UnityEngine.Rendering.BlendMode.One);
+            m.SetFloat("_DstBlendAlpha", (float)UnityEngine.Rendering.BlendMode.OneMinusSrcAlpha);
+            m.SetFloat("_ZWrite", 0f);
+            m.SetOverrideTag("RenderType", "Transparent");
+            m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            m.EnableKeyword("_ALPHAPREMULTIPLY_ON");
+            m.renderQueue = (int)UnityEngine.Rendering.RenderQueue.Transparent;
+            return cache[key] = m;
+        }
+
         /// <summary>Lit material with a synthesized fabric detail map (albedo multiplier + normal), tiled for metre UVs.</summary>
         public static Material Fabric(Color color, float smoothness, Fabric fabric, float metallic = 0f, Color? emission = null)
         {

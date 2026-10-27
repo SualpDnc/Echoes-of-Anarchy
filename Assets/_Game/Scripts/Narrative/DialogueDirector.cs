@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Echoes.Audio;
+using Echoes.Core;
 using Echoes.UI;
 
 namespace Echoes.Narrative
@@ -15,7 +16,7 @@ namespace Echoes.Narrative
     {
         public static DialogueDirector Instance { get; private set; }
 
-        [Range(0f, 1.5f)] public float voiceVolume = 1f;
+        [Range(0f, 1.5f)] public float voiceVolume = 0.65f; // owner: babble reads as less artificial when it sits lower in the mix
         [Tooltip("Minimum seconds a subtitle stays up per character of Turkish text (reading speed).")]
         public float readSecondsPerChar = 0.055f;
 
@@ -102,7 +103,7 @@ namespace Echoes.Narrative
             int total = 0;
             float estimate = 0f;
             foreach (var w in words) { total += w.syllables; estimate += w.syllables * 0.165f + w.pauseAfter; }
-            float readTime = Mathf.Max(1.5f, line.tr.Length * readSecondsPerChar);
+            float readTime = Mathf.Max(1.5f, GameSettings.Pick(line.en, line.tr).Length * readSecondsPerChar);
             float shown = Mathf.Max(estimate, readTime) + 0.4f;
             if (BodycamHUD.Instance != null) BodycamHUD.Instance.ShowLine(p.name, p.color, line.en, line.tr, shown);
 

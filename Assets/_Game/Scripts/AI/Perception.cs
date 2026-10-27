@@ -12,6 +12,9 @@ namespace Echoes.AI
     [RequireComponent(typeof(HumanoidRig))]
     public class Perception : MonoBehaviour
     {
+        /// <summary>Story beats (riding in the ambulance, lying unconscious) hide Daniel from every NPC.</summary>
+        public static bool PlayerConcealed { get; set; }
+
         public float sightRange = 34f;
         public float fieldOfView = 120f;
         public float closeSense = 2.2f;
@@ -64,6 +67,7 @@ namespace Echoes.AI
             nextTick = Time.time + 0.1f;
             float dt = accum;
             accum = 0f;
+            if (PlayerConcealed) { CanSeePlayer = false; return; }
             Sight(dt);
             if (Alerted && TimeSinceSeen > forgetTime)
             {
@@ -134,7 +138,7 @@ namespace Echoes.AI
 
         void OnNoise(NoiseEvent ev)
         {
-            if (!enabled || player == null || ev.source == gameObject) return;
+            if (!enabled || player == null || ev.source == gameObject || (PlayerConcealed && ev.fromPlayer)) return;
             if (ev.source != null && ev.source.transform.IsChildOf(transform)) return;
             Vector3 ears = rig.eyes.position;
             float d = Vector3.Distance(ears, ev.position);
@@ -199,5 +203,8 @@ namespace Echoes.AI
             Alerted = false;
             Awareness = 0f;
         }
+
+        [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
+        static void ResetOnPlay() => PlayerConcealed = false;
     }
 }

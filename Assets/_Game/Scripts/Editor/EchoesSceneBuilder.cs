@@ -47,6 +47,7 @@ namespace Echoes.EditorTools
             CreatePlayer(info.playerSpawn, info.playerYaw);
             CreateReverbZones();
             CreateTestEncounters();
+            CreateDemo(fx);
 
             Directory.CreateDirectory(SceneDir);
             string path = SceneDir + "/HarlowDistrict.unity";
@@ -106,6 +107,15 @@ namespace Echoes.EditorTools
             audio.AddComponent<AudioDevHotkeys>();
         }
 
+        /// <summary>Demo story flow (phase 6): the ambulance cold open, then the crash site. Vehicles are built at runtime.</summary>
+        static void CreateDemo(FireFX.Materials fx)
+        {
+            var go = new GameObject("Demo");
+            go.AddComponent<ColdOpenSequence>();
+            go.AddComponent<CrashSiteSequence>();
+            go.AddComponent<DemoDirector>().fx = fx;
+        }
+
         /// <summary>Phase 4 sandbox fights until the demo sequences (phase 6) place the real encounters.</summary>
         static void CreateTestEncounters()
         {
@@ -121,7 +131,7 @@ namespace Echoes.EditorTools
             Spawner("Looters_Barrel", new Vector3(-7f, 0.15f, -60f), Faction.Looter, 3, 2.5f, 0.35f, true, 4f, 11);
             Spawner("Civilian_Doorway", new Vector3(9.3f, 0.15f, -31f), Faction.Civilian, 1, 0.5f, 0f, true, 2f, 12);
             Spawner("Looters_Alley", new Vector3(27f, 0.15f, -30f), Faction.Looter, 2, 2f, 0.5f, false, 10f, 13);
-            Spawner("Smilers_Intersection", new Vector3(4f, 0f, 42f), Faction.Smiler, 2, 3f, 1f, false, 12f, 14);
+            // The intersection Smilers are now the scripted watchers of sequence 2 (CrashSiteSequence).
         }
 
         /// <summary>Street-canyon reverb everywhere; tighter, slappier reverb in the alley.</summary>

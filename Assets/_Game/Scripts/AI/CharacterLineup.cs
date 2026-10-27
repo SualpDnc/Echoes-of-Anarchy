@@ -12,7 +12,7 @@ namespace Echoes.AI
     public class CharacterLineup : MonoBehaviour
     {
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
-        static readonly string[] Modes = { "IDLE", "WALK", "RUN", "AIM", "HANDS UP", "KNEEL", "COWER", "MELEE" };
+        static readonly string[] Modes = { "IDLE", "WALK", "RUN", "AIM", "HANDS UP", "KNEEL", "COWER", "MELEE", "SEATED", "SLUMPED" };
 
         Transform root, player;
         int mode;
@@ -87,6 +87,8 @@ namespace Echoes.AI
                     5 => ProcAnimator.Pose.Kneel,
                     6 => ProcAnimator.Pose.Cower,
                     7 => ProcAnimator.Pose.Melee,
+                    8 => ProcAnimator.Pose.Seated,
+                    9 => ProcAnimator.Pose.Slumped,
                     _ => ProcAnimator.Pose.Normal
                 };
                 a.aimTarget = eye;

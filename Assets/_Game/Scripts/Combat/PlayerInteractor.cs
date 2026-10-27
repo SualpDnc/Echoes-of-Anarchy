@@ -21,6 +21,13 @@ namespace Echoes.Combat
 
         void Update()
         {
+            if (input.LookOnly || input.InputLocked)
+            {
+                // Cutscenes: no prompts (Luis sitting next to him in the cab is not a melee target).
+                current = null;
+                if (BodycamHUD.Instance != null) BodycamHUD.Instance.SetPrompt("");
+                return;
+            }
             current = Find();
             // With nothing to use, F becomes a melee strike on whoever is in reach.
             bool canStrike = current == null && melee != null && melee.FindTarget() != null;

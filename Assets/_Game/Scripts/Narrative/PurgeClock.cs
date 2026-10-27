@@ -16,6 +16,8 @@ namespace Echoes.Narrative
     public class PurgeClock : MonoBehaviour
     {
         public static event Action PurgeStarted;
+        /// <summary>The moment the grid drops and the blackout wave starts (blackoutDelay after 19:00).</summary>
+        public static event Action GridDown;
 
         public int hour = 19, minute = 0;
 
@@ -28,9 +30,32 @@ namespace Echoes.Narrative
         [Range(0f, 1f)] public float emergencyLevel = 0.6f;
 
         public bool Started { get; private set; }
+        public static PurgeClock Instance { get; private set; }
+
+        /// <summary>Real seconds from now until the grid drops (scripted scenes time themselves to it).</summary>
+        public float SecondsToGridDown
+        {
+            get
+            {
+                var clock = GameClock.Instance;
+                if (clock == null) return blackoutDelay;
+                float toStart = (float)(start - clock.Now).TotalSeconds / Mathf.Max(0.01f, clock.timeScale);
+                return Mathf.Max(0f, toStart) + blackoutDelay;
+            }
+        }
 
         DistantEvents distant;
         DateTime start;
+
+        void Awake() => Instance = this;
+
+        void OnDestroy()
+        {
+            // Static events outlive the scene; drop listeners from the last play session.
+            PurgeStarted = null;
+            GridDown = null;
+            if (Instance == this) Instance = null;
+        }
 
         void Start()
         {
@@ -54,6 +79,7 @@ namespace Echoes.Narrative
             if (PurgeSiren.Instance != null) PurgeSiren.Instance.Sound();
             yield return new WaitForSeconds(blackoutDelay);
 
+            GridDown?.Invoke();
             Vector3 origin = Camera.main != null ? Camera.main.transform.position : transform.position;
             float last = 0f;
             foreach (var lamp in StreetLight.All.ToArray())

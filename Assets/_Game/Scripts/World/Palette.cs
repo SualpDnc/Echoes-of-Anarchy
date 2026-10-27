@@ -15,6 +15,7 @@ namespace Echoes.World
         public Material[] carPaint;
         public Material carGlass, tire, chrome, headlight, taillight, burnt;
         public Material hydrantRed, mailboxBlue, signalHousing, signalAmber, signalOff, lampGlass;
+        public Material signRed, signWhite; // lit sign panels (the gas station pylon)
         public Material distantWindows, dirt;
 
         public Material Pick(Material[] set, System.Random rng) => set[rng.Next(set.Length)];

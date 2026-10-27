@@ -2,6 +2,43 @@
 
 Newest first. Each entry: date, agent, what changed, what the owner still needs to test, known issues.
 
+## 2026-10-27 — Claude Code (Opus 5.5), 6b final polish (committed with 6b)
+- Owner asked: a more realistic face for Luis, stamina lasting 15 s, a reload you can see and hear, a bit faster.
+- Luis's face (`MaskFactory.SculptCloseUp` / `CloseUpFace`): smile lines, eye bags, chin cleft, sloping forehead, hollow temples, squarer jaw; brows as rows of tufts; lash line; two-tone iris; a wet, slightly pink eye white.
+- Stamina `staminaMax` 15 s.
+- Reload (`WeaponPistol.Reload`): the gun comes up with the magwell toward the camera; the old magazine slides out and drops as a real object (clatters on the ground); the support hand (now its own group, `WeaponModels.Hands(..., out supportHand)`) fetches a fresh magazine and seats it; on an empty gun it racks the slide. Tactical 1.55 → 1.3 s, empty 2.0 → 1.7 s. The magazine is now a whole model (body, base plate, top round). New sounds `MagPouch`, `MagSeat`, `MagDrop`; mag-out/in/rack louder (the old clicks were very quiet, RMS 0.035).
+- Owner had walked south and found a dead end: the demo content currently ends at the crash site; the looters at the gas-station sign are the phase 4 test encounter. 6c builds the gas station there.
+- **Owner needs to test:** rebuild the scene (stamina). Reload with R (half and empty mag). Look at Luis's face.
+- Not verified in Unity: the reload hand path and the dropped magazine (watch for the hand clipping through the gun).
+
+## 2026-10-27 — Claude Code (Opus 5.5), intro card + one-language subtitles
+- Owner asked for: a short explanation of the Purge and the date on the opening black screen, with a reactionary quote below; subtitles in one language only (Turkish without English, or English without Turkish).
+- `IntroCard`: first start asks "[1] English  [2] Türkçe"; then the date, what the Purge is (the fictional 2029 Renewal Act) and the quote from Senator Harlan Voss, in the chosen language; Space/Enter/click skips. The clock and the ambulance wait for it.
+- `GameSettings` (PlayerPrefs) holds the subtitle language; `BodycamHUD.ShowLine` shows one language (speaker name in colour); F3 switches it; reading time follows the shown text.
+- **Owner needs to test:** Play from the start: the language choice (only the first time; to see it again delete the PlayerPrefs key `Echoes.SubtitleLanguage`, e.g. Edit > Clear All PlayerPrefs), the intro text and quote, then the subtitles in one language; press F3 to switch.
+- Not verified in Unity yet (compiled with `dotnet build`).
+
+## 2026-10-27 — Claude Code (Opus 5.5), phase 6b revision (owner's first test)
+- Owner feedback: Dispatch voice good, Mia OK, Daniel and Luis too synthetic; Luis has no face and can't hold the wheel; unclear where to go after the crash; dialogue a bit quieter; police siren should fade with distance; more stamina; the Luis choice must have real consequences.
+- **Voices:** direct voices (Daniel, Luis, generic, Hale) get a rougher source (pitch jitter, shimmer, slow vibrato, darker tilt, more breath) and a new `VoiceChannel.Room` (mic band, light saturation, early reflections). `DialogueDirector.voiceVolume` 1 → 0.65. Radio/phone/Smiler voices unchanged. Rendered offline: no NaN.
+- **Luis:** `CharacterLook.closeUp` → `MaskFactory.CloseUpFace` (denser skull with nose bridge/tip/wings, philtrum, lips, eyeballs with iris and pupil under lids, fuller brows, stubble shell); fixed mid skin tone; brighter cab light at face height. Hands on the wheel via new `ProcAnimator` hand IK; the steering wheel is its own object and turns with the path's bends.
+- **Way forward:** Luis gives the way and points south; a burning Smiler barricade closes Harlow north of the crash (z 19.5, with a painted grin; the watchers stand behind it); lit gas-station pylon at x −8.6, z −75 (`PropFactory.GasStationSign`, new palette materials `signRed`/`signWhite`); avenue lamps south come back on emergency power; HUD heading line (`HDG 182° S`) and `SetObjective`; "Home's south" if Daniel walks to the barricade.
+- **Consequences (`StoryState`):** treated → Luis gives his radio (`HasLuisRadio`), radio call at z −45 about looters at the gas station (new `Speaker.LuisRadio` / `SoundId.VoiceLuisRadio`). Left → the Smilers come back: scream, two shots, Luis dead (`LuisAlive = false`), a grin beside his body. Treating him before the shots cancels it.
+- Police drive-by: custom rolloff to silence at 340 m, distance/occlusion low-pass, fades at both ends. Stamina 6 → 8.5 s, regen 1.1 → 1.4.
+- **Owner needs to test:** rebuild the scene (needed: stamina, voice volume and the gas sign are baked in by the builder). Listen to Daniel/Luis in the cab; look at Luis's face and his hands through the bends; at the crash site check that the way south is obvious; try both choices (treat → radio and the call further south; leave → walk away, hear the shots, go back).
+- **Not verified in Unity:** compiled with `dotnet build` only. Watch for: lids or irises poking through on Luis's face, elbows bending oddly with the hand IK, the grin beside Luis floating off the wreck, the barricade overlapping the mailbox or signal poles.
+
+## 2026-10-27 — Claude Code (Opus 5.5), phase 6b
+- 6a was committed by the owner (`2f05882`), so 6b started: demo sequences 1 (cold open) and 2 (crash site). Decisions are in `docs/DESIGN.md` ("Demo route and sequences 1–2").
+- **Vehicles (runtime, all code):** `VehicleFactory.Ambulance` (box ambulance "Medic 14": cab shell, a full cab interior with dash, gauges, radio, MDT screen, steering wheel, seats and mirrors, see-through glass, patient compartment with cabinets and a stretcher, light bar, rear doors) and `RamTruck` (black pickup, ram plate with a painted grin, roof light bar). `ScriptedVehicle` drives them along smooth paths with suspension sway, wheel spin and engine sound.
+- **Sequence 1 (`ColdOpenSequence`):** "EXHIBIT 14" card; Daniel in the passenger seat (`CameraRig.Mount`, look-only input), Luis driving (new `Seated` pose). Radio traffic, cab talk, Mia's voicemail. Tape skip to 18:59:54, south on Harlow Ave, 19:00 siren, Luis switches on the light bar, the grid drops, the truck flares its lights and rams them, the ambulance rolls, cut to black.
+- **Sequence 2 (`CrashSiteSequence`):** ringing ears and a muffled world; Daniel wakes on the asphalt and gets up at 55 % health. Luis sits against the wreck (new `Slumped` pose) and calls out. Two med kits lie where the jump bag spilled (Daniel's own kit is gone). Treat Luis (F, costs a kit, `HelpedWounded`) or walk 28 m away (`AbandonedWounded`). Two `SmilerWatcher`s at the intersection (one filming) trigger a stinger and lines, then walk off. Hints for movement and med kits; objective "head south".
+- Crash site: truck idling with its lights on, steaming radiator, stuck horn that dies after ~11 s, glass and debris, the ambulance's light bar still flashing, a flickering light inside the open back.
+- New sounds (`SynthLibraryVehicle`, appended to `SoundId`): diesel and V8 engine loops, horn, crash impact, metal scrape, tyre squeal, tinnitus, tape skip. Rendered offline: no NaN, peaks 0.55–0.95.
+- Other: HUD `ShowHint`, `Glitch`, `SetVitalsVisible`; `Perception.PlayerConcealed`; `PurgeClock.GridDown` / `SecondsToGridDown`; `MedKitPickup`; `F4` skips the ride; the `Smilers_Intersection` test spawner was removed.
+- **Owner needs to test:** rebuild the scene (Tools > Echoes > Build Harlow District), then press Play and watch from the start. Check: the cab (look around, Luis at the wheel), the subtitles, the tape skip, the 19:00 siren, the light bar, the blackout, the truck, the crash. At the crash site: getting up, Luis, the med kits behind the ambulance, H, treating Luis with F (or walking away), the Smilers at the intersection. F4 skips the ride.
+- **Known issues / not verified in Unity:** compiled with `dotnet build` only; nothing has been seen in the editor yet. Watch for: inside-out faces on the vehicles (especially the cab interior), Luis's hands not quite on the wheel and his feet under the cab floor (hidden by the dash), the transparent glass, the exact layout of the crash site (Luis against the underside, parked cars nearby), the timing of the truck. Before 19:00 the street still has the burning cars from "the first hour of the Purge" (an old inconsistency).
+
 ## 2026-10-27 — Claude Code (Opus 5.5), phase 6a
 - Phase 5 and the camera fix were committed (`d1898fb`) at the owner's request. Phase 6 is split into steps 6a–6e (see `docs/DESIGN.md`).
 - Owner decisions: babble voices; English and Turkish lines shown together.

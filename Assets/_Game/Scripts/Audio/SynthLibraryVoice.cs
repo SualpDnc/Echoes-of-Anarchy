@@ -12,7 +12,7 @@ namespace Echoes.Audio
     /// </summary>
     public static partial class SynthLibrary
     {
-        public enum VoiceChannel { Direct, Phone, Radio, Muffled }
+        public enum VoiceChannel { Direct, Phone, Radio, Muffled, Room }
 
         struct VoiceSpec
         {
@@ -34,15 +34,16 @@ namespace Echoes.Audio
                 id = id, variations = 24,
                 render = r => Syllable(r, new VoiceSpec { f0 = f0, formantScale = scale, breath = breath, channel = ch, glitch = glitch })
             };
-            yield return V(SoundId.VoiceDaniel, 102f, 1.0f, 0.08f, VoiceChannel.Direct);
-            yield return V(SoundId.VoiceLuis, 124f, 1.03f, 0.1f, VoiceChannel.Direct);
+            yield return V(SoundId.VoiceDaniel, 102f, 1.0f, 0.16f, VoiceChannel.Room);
+            yield return V(SoundId.VoiceLuis, 124f, 1.03f, 0.17f, VoiceChannel.Room);
             yield return V(SoundId.VoiceMiaPhone, 255f, 1.28f, 0.12f, VoiceChannel.Phone);
             yield return V(SoundId.VoiceMiaClone, 255f, 1.28f, 0.05f, VoiceChannel.Phone, 0.4f); // too clean, then it breaks
             yield return V(SoundId.VoiceDispatch, 195f, 1.15f, 0.05f, VoiceChannel.Radio);
-            yield return V(SoundId.VoiceMale, 116f, 1.0f, 0.1f, VoiceChannel.Direct);
-            yield return V(SoundId.VoiceFemale, 205f, 1.16f, 0.12f, VoiceChannel.Direct);
+            yield return V(SoundId.VoiceMale, 116f, 1.0f, 0.16f, VoiceChannel.Room);
+            yield return V(SoundId.VoiceFemale, 205f, 1.16f, 0.17f, VoiceChannel.Room);
             yield return V(SoundId.VoiceSmiler, 108f, 0.97f, 0.04f, VoiceChannel.Muffled);
-            yield return V(SoundId.VoiceHale, 94f, 0.98f, 0.09f, VoiceChannel.Direct);
+            yield return V(SoundId.VoiceHale, 94f, 0.98f, 0.15f, VoiceChannel.Room);
+            yield return V(SoundId.VoiceLuisRadio, 124f, 1.03f, 0.1f, VoiceChannel.Radio); // Luis on the handheld he gave Daniel
             yield return new Recipe { id = SoundId.PhoneRing, render = PhoneRing };
             yield return new Recipe { id = SoundId.PhonePickup, render = PhonePickup };
             yield return new Recipe { id = SoundId.PhoneHangup, render = PhoneHangup };
@@ -77,7 +78,13 @@ namespace Echoes.Audio
             var fricS = Biquad.HighPass(4800f);
             var fricSh = Biquad.BandPass(2900f, 2f);
             var burst = Biquad.BandPass(Range(r, 1600f, 3600f), 1.2f);
-            var tilt = new OnePoleLP(v.f0 > 200f ? 4200f : 3000f);
+            // Voices heard directly (not phone or radio) need a rougher, darker source or they sound like a synth:
+            // more cycle-to-cycle pitch jitter, amplitude shimmer, a slow wandering vibrato and less top end.
+            bool natural = v.channel == VoiceChannel.Room;
+            var tilt = new OnePoleLP(v.f0 > 200f ? (natural ? 3500f : 4200f) : (natural ? 2400f : 3000f));
+            float jitAmt = natural ? 0.022f : 0.01f;
+            float vibHz = natural ? Range(r, 2.6f, 4.2f) : 5.3f, vibAmt = natural ? 0.006f : 0.01f;
+            float shimmer = 1f;
 
             float pitch0 = v.f0 * Range(r, 0.92f, 1.1f);
             float slope = Range(r, -0.14f, 0.05f);
@@ -94,15 +101,19 @@ namespace Echoes.Audio
                         float f = Lerp(Vowels[va, k], Vowels[vb, k], glide) * fs;
                         bp[k].SetBandPass(f, f / (bws[k] * fs));
                     }
-                    jitter = Range(r, -0.01f, 0.01f);
+                    jitter = Range(r, -jitAmt, jitAmt);
                 }
 
                 // Glottal source; the vowel envelope gates it, a little of it leaks into nasals.
-                float f0 = pitch0 * (1f + slope * Clamp01(tv / vowelLen)) * (1f + 0.01f * Sin(TwoPi * 5.3f * t) + jitter);
+                float f0 = pitch0 * (1f + slope * Clamp01(tv / vowelLen)) * (1f + vibAmt * Sin(TwoPi * vibHz * t) + jitter);
                 phase += f0 / Rate;
-                if (phase >= 1f) phase -= 1f;
+                if (phase >= 1f)
+                {
+                    phase -= 1f;
+                    if (natural) shimmer = 1f + (Rand(r) - 0.5f) * 0.24f; // each glottal cycle a little louder or softer
+                }
                 float g = Glottal(phase);
-                float src = tilt.Process((g - prevG) * 8f); // radiated (differentiated) pulse with spectral tilt
+                float src = tilt.Process((g - prevG) * 8f) * shimmer; // radiated (differentiated) pulse with spectral tilt
                 prevG = g;
                 float vEnv = tv < 0f ? 0f : Math.Min(1f, tv / 0.014f) * Math.Min(1f, (vowelLen - tv) / 0.04f + 0.0001f);
                 vEnv = Math.Max(0f, vEnv);
@@ -177,6 +188,7 @@ namespace Echoes.Audio
         static void Channel(Random r, float[] buf, VoiceChannel ch)
         {
             if (ch == VoiceChannel.Direct) return;
+            if (ch == VoiceChannel.Room) { Room(buf); return; }
             float lo = ch == VoiceChannel.Phone ? 320f : ch == VoiceChannel.Radio ? 450f : 90f;
             float hi = ch == VoiceChannel.Phone ? 3300f : ch == VoiceChannel.Radio ? 2800f : 2100f;
             float drive = ch == VoiceChannel.Phone ? 1.6f : ch == VoiceChannel.Radio ? 2.6f : 1.1f;
@@ -189,6 +201,27 @@ namespace Echoes.Audio
                 float x = buf[i] + White(r) * floor;
                 x = lp2.Process(lp1.Process(hp2.Process(hp1.Process(x))));
                 buf[i] = (float)Math.Tanh(body.Process(x) * drive) * 0.8f;
+            }
+        }
+
+        /// <summary>
+        /// A voice in the same space as the bodycam: a real mic's band (no sub, no fizz), a touch of saturation and a few
+        /// early reflections, which hide the clean synthetic edges the way the radio band hides Dispatch's.
+        /// </summary>
+        static void Room(float[] buf)
+        {
+            var hp = Biquad.HighPass(120f);
+            var lp = Biquad.LowPass(5200f);
+            var src = (float[])buf.Clone();
+            for (int i = 0; i < buf.Length; i++) src[i] = (float)Math.Tanh(lp.Process(hp.Process(src[i])) * 1.15f);
+            int[] taps = { Samples(0.0071f), Samples(0.0128f), Samples(0.0197f), Samples(0.0263f) };
+            float[] gains = { 0.2f, 0.14f, 0.09f, 0.06f };
+            var refl = Biquad.LowPass(2600f);
+            for (int i = 0; i < buf.Length; i++)
+            {
+                float e = 0f;
+                for (int k = 0; k < taps.Length; k++) if (i >= taps[k]) e += src[i - taps[k]] * gains[k];
+                buf[i] = src[i] + refl.Process(e);
             }
         }
 

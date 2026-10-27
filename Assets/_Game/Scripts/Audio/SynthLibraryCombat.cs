@@ -78,6 +78,60 @@ namespace Echoes.Audio
             return buf;
         }
 
+        /// <summary>An empty magazine hitting asphalt: a hollow polymer-and-steel knock, a bounce, a short rattle.</summary>
+        static float[] MagDrop(Random r)
+        {
+            var buf = new float[Samples(0.6f)];
+            var body = Biquad.BandPass(Range(r, 650f, 900f), 2f);
+            var tick = Biquad.HighPass(2500f);
+            float bounce = Range(r, 0.09f, 0.14f);
+            float[] modes = { Range(r, 1400f, 1700f), Range(r, 2600f, 3100f), Range(r, 4200f, 4800f) };
+            for (int i = 0; i < buf.Length; i++)
+            {
+                float t = (float)i / Rate;
+                float hit = Env(t, 0.0003f, 0.02f) + Env(t - bounce, 0.0003f, 0.012f) * 0.45f;
+                float v = body.Process(White(r)) * hit * 2.5f + tick.Process(White(r)) * hit * 0.6f;
+                for (int m = 0; m < modes.Length; m++) v += Sin(TwoPi * modes[m] * t) * Env(t, 0.0003f, 0.05f / (m + 1)) * 0.25f;
+                if (t > bounce && t < 0.45f && r.NextDouble() < 0.002) v += White(r) * 0.3f; // rattle settling
+                buf[i] = v;
+            }
+            Normalize(buf, 0.8f);
+            return buf;
+        }
+
+        /// <summary>A fresh magazine pulled from the belt pouch: fabric drag and a polymer scrape.</summary>
+        static float[] MagPouch(Random r)
+        {
+            var buf = new float[Samples(0.4f)];
+            var cloth = Biquad.BandPass(1100f, 0.7f);
+            var scrape = Biquad.BandPass(3200f, 1.5f);
+            for (int i = 0; i < buf.Length; i++)
+            {
+                float t = (float)i / Rate;
+                float env = Sin((float)Math.PI * Clamp01(t / 0.32f));
+                buf[i] = cloth.Process(White(r)) * env * 0.8f + scrape.Process(White(r)) * Env(t - 0.2f, 0.01f, 0.06f) * 0.6f;
+            }
+            Normalize(buf, 0.55f);
+            Fade(buf, 0.005f, 0.05f);
+            return buf;
+        }
+
+        /// <summary>The magazine slapped home: a solid low thunk under a bright latch click.</summary>
+        static float[] MagSeat(Random r)
+        {
+            var buf = new float[Samples(0.3f)];
+            var lp = Biquad.LowPass(900f);
+            for (int i = 0; i < buf.Length; i++)
+            {
+                float t = (float)i / Rate;
+                float thunk = Sin(TwoPi * 170f * t) * Env(t, 0.001f, 0.04f) + lp.Process(White(r)) * Env(t, 0.0005f, 0.02f) * 1.5f;
+                float click = Sin(TwoPi * 3300f * (t - 0.004f)) * Env(t - 0.004f, 0.0002f, 0.008f) * 0.7f + White(r) * Env(t - 0.004f, 0.0001f, 0.002f) * 0.6f;
+                buf[i] = thunk + click;
+            }
+            Normalize(buf, 0.85f);
+            return buf;
+        }
+
         static float[] SlideRack(Random r)
         {
             var a = Mech(r, 0.06f, 2000f, 0.7f);

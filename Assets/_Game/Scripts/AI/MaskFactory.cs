@@ -41,8 +41,9 @@ namespace Echoes.AI
                     Hood(mb, look.topMat);
                     return;
                 default:
-                    Skull(mb, look.skin, true);
-                    Eyes(mb, look, true);
+                    Skull(mb, look.skin, true, look.closeUp);
+                    if (look.closeUp) CloseUpFace(mb, look);
+                    else Eyes(mb, look, true);
                     Hair(mb, look);
                     return;
             }
@@ -70,22 +71,98 @@ namespace Echoes.AI
             return o;
         }
 
+        /// <summary>
+        /// Extra shape for faces seen at arm's length: nose bridge, tip and wings, philtrum, lip mound, the dip under
+        /// the lower lip, cheeks and deeper eye sockets. Needs the denser close-up skull to show.
+        /// </summary>
+        static Vector3 SculptCloseUp(Vector3 d)
+        {
+            float front = Mathf.Clamp01(d.z * 1.5f);
+            var o = Sculpt(d);
+            o.z += (0.006f * G(d.x, d.y - 0.02f, 0.045f, 0.16f)
+                  + 0.009f * G(d.x, d.y + 0.24f, 0.06f, 0.06f)
+                  + 0.005f * (G(d.x - 0.085f, d.y + 0.27f, 0.035f, 0.035f) + G(d.x + 0.085f, d.y + 0.27f, 0.035f, 0.035f))
+                  - 0.0025f * G(d.x, d.y + 0.37f, 0.025f, 0.04f)
+                  + 0.004f * G(d.x, d.y + 0.45f, 0.2f, 0.05f)
+                  - 0.004f * G(d.x, d.y + 0.57f, 0.16f, 0.035f)
+                  + 0.003f * (G(d.x - 0.42f, d.y + 0.18f, 0.14f, 0.12f) + G(d.x + 0.42f, d.y + 0.18f, 0.14f, 0.12f))
+                  - 0.003f * (G(d.x - 0.3f, d.y - 0.07f, 0.09f, 0.06f) + G(d.x + 0.3f, d.y - 0.07f, 0.09f, 0.06f))) * front;
+            // Age and structure (owner asked for a more realistic face): smile lines from the nose wings to the
+            // mouth corners, bags under the eyes, a chin cleft, a forehead that slopes back.
+            float ax = Mathf.Abs(d.x), side = Mathf.Sign(d.x);
+            o.z += (-0.0028f * G(ax - 0.17f - (-d.y - 0.28f) * 0.5f, d.y + 0.38f, 0.025f, 0.11f)
+                  + 0.0018f * G(ax - 0.3f, d.y + 0.03f, 0.09f, 0.03f)
+                  - 0.0016f * G(d.x, d.y + 0.76f, 0.025f, 0.05f)
+                  - 0.006f * Mathf.Clamp01(d.y - 0.42f)) * front;
+            // Hollow temples and a squarer jaw angle under the ears.
+            o.x -= side * 0.004f * G(ax - 0.78f, d.y - 0.25f, 0.15f, 0.2f);
+            o.x += side * 0.005f * G(ax - 0.8f, d.y + 0.55f, 0.15f, 0.15f);
+            return o;
+        }
+
         static Vector3 Dir(float fx, float fy) => new Vector3(fx, fy, Mathf.Sqrt(Mathf.Max(0.05f, 1f - fx * fx - fy * fy))).normalized;
 
         /// <summary>Point on the sculpted skull for face coordinates (−1..1), pushed out by lift (times scale for shells).</summary>
-        static Vector3 SkullPoint(float fx, float fy, float lift, float scale = 1f)
+        static Vector3 SkullPoint(float fx, float fy, float lift, float scale = 1f, bool closeUp = false)
         {
             var d = Dir(fx, fy);
-            return C + Vector3.Scale(d, R) * scale + Sculpt(d) + d * lift;
+            return C + Vector3.Scale(d, R) * scale + (closeUp ? SculptCloseUp(d) : Sculpt(d)) + d * lift;
         }
 
-        static void Skull(SkinnedBodyBuilder mb, Material skin, bool ears)
+        static void Skull(SkinnedBodyBuilder mb, Material skin, bool ears, bool closeUp = false)
         {
-            mb.Ellipsoid(skin, C, R, Quaternion.identity, OnHead, 16, 22, Sculpt);
+            if (closeUp) mb.Ellipsoid(skin, C, R, Quaternion.identity, OnHead, 26, 36, SculptCloseUp);
+            else mb.Ellipsoid(skin, C, R, Quaternion.identity, OnHead, 16, 22, Sculpt);
             if (!ears) return;
             foreach (float side in new[] { -1f, 1f })
                 mb.Ellipsoid(skin, C + new Vector3(side * 0.094f, -0.008f, -0.006f), new Vector3(0.012f, 0.028f, 0.018f),
                              Quaternion.Euler(0f, side * 20f, 0f), OnHead, 6, 8);
+        }
+
+        /// <summary>
+        /// A face that holds up at arm's length (owner: Luis looked faceless in the cab): eyeballs with iris and pupil
+        /// under upper and lower lids, fuller brows, two lips and the line between them, and a shadow of stubble.
+        /// </summary>
+        static void CloseUpFace(SkinnedBodyBuilder mb, CharacterLook look)
+        {
+            var white = RuntimeMaterials.Lit(new Color(0.7f, 0.62f, 0.58f), 0.93f); // a little pink, wet
+            var iris = RuntimeMaterials.Lit(new Color(0.07f, 0.04f, 0.02f), 0.9f);
+            var irisInner = RuntimeMaterials.Lit(new Color(0.16f, 0.09f, 0.04f), 0.9f);
+            var lash = RuntimeMaterials.Lit(new Color(0.015f, 0.01f, 0.008f), 0.3f);
+            var pupil = RuntimeMaterials.Lit(new Color(0.004f, 0.004f, 0.004f), 0.95f);
+            var line = RuntimeMaterials.Lit(new Color(look.skinTone.r * 0.35f, look.skinTone.g * 0.25f, look.skinTone.b * 0.25f), 0.4f);
+            var stubble = RuntimeMaterials.Lit(look.skinTone * 0.68f, 0.25f);
+            var brow = look.hair == HairKind.Long || look.hair == HairKind.Short ? look.hairMat : RuntimeMaterials.Lit(new Color(0.03f, 0.02f, 0.015f), 0.2f);
+            foreach (float side in new[] { -1f, 1f })
+            {
+                Vector3 eye = SkullPoint(side * 0.3f, 0.07f, -0.006f, 1f, true);
+                mb.Ellipsoid(white, eye, new Vector3(0.012f, 0.0095f, 0.009f), Quaternion.identity, OnHead, 8, 12);
+                mb.Ellipsoid(iris, eye + new Vector3(0f, 0f, 0.0078f), new Vector3(0.0052f, 0.0052f, 0.0016f), Quaternion.identity, OnHead, 6, 10);
+                mb.Ellipsoid(irisInner, eye + new Vector3(0f, 0f, 0.0083f), new Vector3(0.0038f, 0.0038f, 0.0013f), Quaternion.identity, OnHead, 6, 10); // dark limbal ring around a lighter iris
+                // Lash line along the edge of the upper lid.
+                mb.Ellipsoid(lash, eye + new Vector3(0f, 0.0052f, 0.0094f), new Vector3(0.0125f, 0.001f, 0.0016f), Quaternion.identity, OnHead, 4, 10);
+                mb.Ellipsoid(pupil, eye + new Vector3(0f, 0f, 0.0092f), new Vector3(0.0024f, 0.0024f, 0.0008f), Quaternion.identity, OnHead, 4, 8);
+                // Lids: skin shells over the top and bottom of the eyeball.
+                mb.Ellipsoid(look.skin, eye + new Vector3(0f, 0.0015f, 0.0005f), new Vector3(0.0135f, 0.0105f, 0.0098f), Quaternion.identity, OnHead, 8, 12,
+                             null, d => d.y > 0.35f && d.z > -0.2f);
+                mb.Ellipsoid(look.skin, eye + new Vector3(0f, -0.001f, 0.0003f), new Vector3(0.0132f, 0.0102f, 0.0096f), Quaternion.identity, OnHead, 8, 12,
+                             null, d => d.y < -0.55f && d.z > -0.2f);
+                // Brows as a row of short tufts: thick at the inner end, thinning toward the temple.
+                for (int k = 0; k < 6; k++)
+                {
+                    float u = k / 5f;
+                    float fx = side * (0.17f + u * 0.26f), fy = 0.205f + 0.03f * Mathf.Sin(u * Mathf.PI * 0.8f);
+                    mb.Ellipsoid(brow, SkullPoint(fx, fy, 0.0015f, 1f, true), new Vector3(0.0065f, 0.0042f - u * 0.0018f, 0.0045f),
+                                 Quaternion.Euler(0f, side * 18f, side * (-25f + u * 30f)), OnHead, 3, 6);
+                }
+            }
+            mb.Ellipsoid(look.lips, SkullPoint(0f, -0.44f, -0.0035f, 1f, true), new Vector3(0.021f, 0.0045f, 0.0065f), Quaternion.identity, OnHead, 6, 10);
+            mb.Ellipsoid(look.lips, SkullPoint(0f, -0.505f, -0.003f, 1f, true), new Vector3(0.019f, 0.006f, 0.007f), Quaternion.identity, OnHead, 6, 10);
+            mb.Ellipsoid(line, SkullPoint(0f, -0.472f, 0.0005f, 1f, true), new Vector3(0.0185f, 0.0011f, 0.003f), Quaternion.identity, OnHead, 4, 8);
+            // Stubble: the same skull mesh lifted 1.4 mm (identical tessellation, so nothing pokes through), jaw and upper lip only.
+            mb.Ellipsoid(stubble, C, R, Quaternion.identity, OnHead, 26, 36, d => SculptCloseUp(d) + d * 0.0014f,
+                         d => d.y < -0.2f && d.y > -0.95f && d.z > 0.05f && Mathf.Abs(d.x) < 0.8f
+                              && !(Mathf.Abs(d.x) < 0.22f && d.y > -0.56f && d.y < -0.4f) && !(Mathf.Abs(d.x) < 0.14f && d.y > -0.33f));
         }
 
         static void Eyes(SkinnedBodyBuilder mb, CharacterLook look, bool fullFace)

@@ -27,6 +27,8 @@ namespace Echoes.AI
         public HeadKind head;
         public HairKind hair;
         public bool shortSleeves, gloves, hoodUp;
+        /// <summary>Seen at arm's length (Luis in the cab): a denser, more detailed face. Costs more vertices.</summary>
+        public bool closeUp;
 
         public Color skinTone, ledColor;
         public Material skin, lips, topMat, innerMat, accentMat, pantsMat, shoeMat, soleMat, gloveMat, hairMat, beltMat;

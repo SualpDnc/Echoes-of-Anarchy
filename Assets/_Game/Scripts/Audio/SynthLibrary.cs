@@ -13,7 +13,9 @@ namespace Echoes.Audio
         GunPistolNear, DryFire, MagOut, MagIn, SlideRack, ShellCasing, ImpactHard, ImpactMetal, ImpactFlesh, Whizz,
         TensionHit, Heartbeat, BodyFall, BatSwing, BatHit, Bandage,
         VoiceDaniel, VoiceLuis, VoiceMiaPhone, VoiceMiaClone, VoiceDispatch, VoiceMale, VoiceFemale, VoiceSmiler, VoiceHale,
-        PhoneRing, PhonePickup, PhoneHangup, VoicemailBeep, RadioSquelch
+        PhoneRing, PhonePickup, PhoneHangup, VoicemailBeep, RadioSquelch,
+        EngineDiesel, EngineTruck, CarHorn, CrashImpact, MetalScrape, TireScreech, Tinnitus, TapeSkip,
+        VoiceLuisRadio, MagDrop, MagPouch, MagSeat
     }
 
     /// <summary>
@@ -75,8 +77,12 @@ namespace Echoes.Audio
                 new Recipe { id = SoundId.BatSwing, render = BatSwing },
                 new Recipe { id = SoundId.BatHit, variations = 2, render = BatHit },
                 new Recipe { id = SoundId.Bandage, render = Bandage },
+                new Recipe { id = SoundId.MagDrop, variations = 2, render = MagDrop },
+                new Recipe { id = SoundId.MagPouch, render = MagPouch },
+                new Recipe { id = SoundId.MagSeat, render = MagSeat },
             };
             all.AddRange(VoiceRecipes());
+            all.AddRange(VehicleRecipes());
             return all;
         }
 

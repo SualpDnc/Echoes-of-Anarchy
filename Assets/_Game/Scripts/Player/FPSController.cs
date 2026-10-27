@@ -32,8 +32,8 @@ namespace Echoes.Player
         public float crouchLerpSpeed = 9f;
 
         [Header("Stamina (seconds of sprint)")]
-        public float staminaMax = 6f;
-        public float staminaRegenRate = 1.1f;
+        public float staminaMax = 15f;
+        public float staminaRegenRate = 1.4f;
         public float staminaRegenDelay = 1.3f;
         public float jumpStaminaCost = 0.9f;
 

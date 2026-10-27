@@ -57,9 +57,13 @@ namespace Echoes.Combat
 
             rig.mag = new GameObject("Mag").transform;
             rig.mag.SetParent(rig.root, false);
+            // A whole magazine (body inside the grip, base plate, the top round showing) so a reload can be seen.
             var mag = new MeshBuilder();
-            mag.BoxRotated(Polymer, new Vector3(0f, -0.125f, -0.073f), new Vector3(0.031f, 0.012f, 0.052f), Quaternion.Euler(16f, 0f, 0f));
-            mag.Build("MagBase", rig.mag, sh);
+            Quaternion grip = Quaternion.Euler(16f, 0f, 0f);
+            mag.BoxRotated(Polymer, new Vector3(0f, -0.125f, -0.073f), new Vector3(0.031f, 0.012f, 0.052f), grip);
+            mag.BoxRotated(Slide, new Vector3(0f, -0.07f, -0.062f), new Vector3(0.022f, 0.105f, 0.032f), grip);
+            mag.BoxRotated(Brass, new Vector3(0f, -0.016f, -0.046f), new Vector3(0.009f, 0.009f, 0.022f), grip);
+            mag.Build("MagMesh", rig.mag, sh);
 
             rig.muzzle = new GameObject("Muzzle").transform;
             rig.muzzle.SetParent(rig.root, false);
@@ -74,10 +78,13 @@ namespace Echoes.Combat
         /// Daniel's hands in a two-handed grip: blue nitrile gloves (he's a paramedic), navy EMS jacket sleeves
         /// with reflective cuff bands. Forearms run back toward the chest-mounted camera.
         /// </summary>
-        public static Transform Hands(Transform gunRoot)
+        public static Transform Hands(Transform gunRoot, out Transform supportHand)
         {
             var root = new GameObject("Hands").transform;
             root.SetParent(gunRoot, false);
+            // The support (left) hand is its own group: it lets go of the gun to swap magazines and rack the slide.
+            supportHand = new GameObject("SupportHand").transform;
+            supportHand.SetParent(root, false);
             var glove = RuntimeMaterials.Lit(new Color(0.07f, 0.13f, 0.42f), 0.55f);
             var sleeve = RuntimeMaterials.Lit(new Color(0.025f, 0.03f, 0.055f), 0.2f);
             var reflective = RuntimeMaterials.Lit(new Color(0.55f, 0.56f, 0.5f), 0.85f, 0.3f);
@@ -85,10 +92,10 @@ namespace Echoes.Combat
             // Strong hand wraps the grip; support hand cups it from the left.
             PrimitiveMeshes.Part(root, "RightHand", PrimitiveType.Sphere, new Vector3(0.006f, -0.07f, -0.062f), new Vector3(0.052f, 0.1f, 0.075f), glove, Quaternion.Euler(16f, 0f, 0f), false);
             PrimitiveMeshes.Part(root, "RightThumb", PrimitiveType.Capsule, new Vector3(-0.019f, -0.03f, -0.035f), new Vector3(0.018f, 0.03f, 0.018f), glove, Quaternion.Euler(70f, -10f, 0f), false);
-            PrimitiveMeshes.Part(root, "LeftHand", PrimitiveType.Sphere, new Vector3(-0.026f, -0.068f, -0.05f), new Vector3(0.05f, 0.095f, 0.08f), glove, Quaternion.Euler(16f, 0f, 10f), false);
-            PrimitiveMeshes.Part(root, "LeftThumb", PrimitiveType.Capsule, new Vector3(-0.017f, -0.024f, -0.005f), new Vector3(0.017f, 0.03f, 0.017f), glove, Quaternion.Euler(80f, 0f, 0f), false);
+            PrimitiveMeshes.Part(supportHand, "LeftHand", PrimitiveType.Sphere, new Vector3(-0.026f, -0.068f, -0.05f), new Vector3(0.05f, 0.095f, 0.08f), glove, Quaternion.Euler(16f, 0f, 10f), false);
+            PrimitiveMeshes.Part(supportHand, "LeftThumb", PrimitiveType.Capsule, new Vector3(-0.017f, -0.024f, -0.005f), new Vector3(0.017f, 0.03f, 0.017f), glove, Quaternion.Euler(80f, 0f, 0f), false);
             Forearm(root, new Vector3(0.012f, -0.1f, -0.1f), new Vector3(0.14f, -0.26f, -0.42f), sleeve, reflective, glove);
-            Forearm(root, new Vector3(-0.034f, -0.095f, -0.085f), new Vector3(-0.15f, -0.25f, -0.4f), sleeve, reflective, glove);
+            Forearm(supportHand, new Vector3(-0.034f, -0.095f, -0.085f), new Vector3(-0.15f, -0.25f, -0.4f), sleeve, reflective, glove);
             return root;
         }
 

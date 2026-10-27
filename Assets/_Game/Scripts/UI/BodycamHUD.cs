@@ -18,7 +18,8 @@ namespace Echoes.UI
         [Range(0f, 0.3f)] public float scanlineAlpha = 0.01f;
 
         Canvas canvas;
-        Text recText, stampText, deviceText, subtitleText, promptText;
+        Text recText, stampText, deviceText, subtitleText, promptText, headingText, objectiveText;
+        static readonly string[] CompassPoints = { "N", "NE", "E", "SE", "S", "SW", "W", "NW" };
         RawImage grainImg, scanImg;
         Font mono;
         float subtitleUntil;
@@ -56,6 +57,9 @@ namespace Echoes.UI
             deviceText = MakeText("Device", 24, TextAnchor.UpperRight, new Vector2(1, 1), new Vector2(-48, -36), new Color(1f, 1f, 1f, 0.9f));
             deviceText.text = deviceLine;
             stampText = MakeText("Stamp", 26, TextAnchor.UpperRight, new Vector2(1, 1), new Vector2(-48, -68), new Color(1f, 1f, 1f, 0.9f));
+            headingText = MakeText("Heading", 22, TextAnchor.UpperRight, new Vector2(1, 1), new Vector2(-48, -98), new Color(1f, 1f, 1f, 0.75f));
+            objectiveText = MakeText("Objective", 22, TextAnchor.UpperRight, new Vector2(1, 1), new Vector2(-48, -126), new Color(1f, 0.92f, 0.7f, 0.8f));
+            objectiveText.rectTransform.sizeDelta = new Vector2(1100, 40);
 
             subtitleText = MakeText("Subtitle", 34, TextAnchor.LowerCenter, new Vector2(0.5f, 0), new Vector2(0, 110), Color.white);
             subtitleText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
@@ -103,6 +107,14 @@ namespace Echoes.UI
 
         void Update()
         {
+            // F3 switches the subtitle language (temporary, until the phase 7 settings menu).
+            var kb = UnityEngine.InputSystem.Keyboard.current;
+            if (kb != null && kb.f3Key.wasPressedThisFrame)
+            {
+                GameSettings.Subtitles = GameSettings.Turkish ? SubtitleLanguage.English : SubtitleLanguage.Turkish;
+                ShowCenter(GameSettings.Pick("SUBTITLES: ENGLISH", "ALTYAZI: TÜRKÇE"), 1.5f);
+            }
+
             // REC blinks at 1 Hz like real devices.
             recText.enabled = Mathf.Repeat(Time.unscaledTime, 1f) < 0.6f;
 
@@ -110,13 +122,24 @@ namespace Echoes.UI
             if (clock != null)
                 stampText.text = clock.Now.ToString("yyyy-MM-dd  HH:mm:ss") + " -0500";
 
+            // GPS heading, like the compass line on real body-worn cameras: lets the player keep "south" without a marker.
+            var cam = Camera.main;
+            if (cam != null)
+            {
+                float hdg = Mathf.Repeat(cam.transform.eulerAngles.y, 360f);
+                headingText.text = "HDG " + Mathf.RoundToInt(hdg).ToString("000") + "° " + CompassPoints[Mathf.RoundToInt(hdg / 45f) % 8];
+            }
+
             // Shift noise every frame; offset scanlines by a pixel to fake interlace crawl.
             float aspect = (float)Screen.width / Mathf.Max(1, Screen.height);
             grainImg.uvRect = new Rect(Random.value, Random.value, 4f * aspect, 4f);
             float lines = Screen.height / 4f;
             scanImg.uvRect = new Rect(0f, (Time.frameCount & 1) * 0.5f, 1f, lines);
-            grainImg.color = new Color(1f, 1f, 1f, grainAlpha);
-            scanImg.color = new Color(1f, 1f, 1f, scanlineAlpha);
+            // A tape skip briefly tears the image; the clean look comes straight back.
+            float glitch = Time.unscaledTime < glitchUntil ? Mathf.Clamp01((glitchUntil - Time.unscaledTime) / 0.25f) : 0f;
+            grainImg.color = new Color(1f, 1f, 1f, grainAlpha + glitch * 0.3f);
+            scanImg.color = new Color(1f, 1f, 1f, scanlineAlpha + glitch * 0.25f);
+            if (glitch > 0f) scanImg.uvRect = new Rect(Random.value * 0.02f, Random.value, 1f, lines * Random.Range(0.25f, 1f));
 
             if (subtitleText.text.Length > 0 && Time.time > subtitleUntil)
             {
@@ -157,11 +180,31 @@ namespace Echoes.UI
         public void ShowLine(string speaker, Color color, string en, string tr, float duration)
         {
             EnsureDialogue();
-            subtitleText.text = tr;
-            englishText.text = $"<color=#{ColorUtility.ToHtmlStringRGB(color)}>{speaker}:</color> {en}";
-            // Sit just above the Turkish block, however many lines it wraps to.
-            englishText.rectTransform.anchoredPosition = new Vector2(0f, 110f + subtitleText.preferredHeight + 6f);
+            // One language only (owner): the English voice text or the Turkish translation, as chosen in GameSettings.
+            subtitleText.text = $"<color=#{ColorUtility.ToHtmlStringRGB(color)}>{speaker}:</color> {GameSettings.Pick(en, tr)}";
+            englishText.text = "";
             subtitleUntil = Time.time + duration;
+        }
+
+        // ------------------------------------------------------------------ intro card
+
+        Text cardText;
+
+        /// <summary>Full-screen text over the black (the intro): rich text, centred, faded by alpha. Empty hides it.</summary>
+        public void SetCard(string richText, float alpha)
+        {
+            if (cardText == null)
+            {
+                EnsureCombatOverlays();
+                cardText = MakeText("Card", 30, TextAnchor.MiddleCenter, new Vector2(0.5f, 0.5f), Vector2.zero, Color.white);
+                cardText.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+                cardText.horizontalOverflow = HorizontalWrapMode.Wrap;
+                cardText.rectTransform.sizeDelta = new Vector2(1250, 800);
+                cardText.lineSpacing = 1.15f;
+            }
+            cardText.transform.SetAsLastSibling();
+            cardText.text = richText ?? "";
+            cardText.color = new Color(1f, 1f, 1f, Mathf.Clamp01(alpha));
         }
 
         /// <summary>Phone call indicator at the top: ringing (blinking) or connected with a call timer.</summary>
@@ -191,6 +234,41 @@ namespace Echoes.UI
         }
 
         public void SetPrompt(string text) => promptText.text = text ?? "";
+
+        /// <summary>The current objective, a dim line under the heading that stays until replaced (empty clears it).</summary>
+        public void SetObjective(string text) => objectiveText.text = string.IsNullOrEmpty(text) ? "" : "OBJ  " + text.ToUpperInvariant();
+
+        float glitchUntil;
+
+        /// <summary>Tape-skip tear: heavy noise and rolling lines for a moment (scene cuts in the footage).</summary>
+        public void Glitch(float duration) => glitchUntil = Mathf.Max(glitchUntil, Time.unscaledTime + duration);
+
+        // ------------------------------------------------------------------ hints
+
+        Text hintText;
+        float hintUntil;
+
+        /// <summary>A tutorial or objective hint, bottom-left above the vitals. Fades out on its own.</summary>
+        public void ShowHint(string text, float duration = 6f)
+        {
+            if (hintText == null)
+            {
+                hintText = MakeText("Hint", 24, TextAnchor.LowerLeft, new Vector2(0, 0), new Vector2(48, 112), new Color(1f, 1f, 1f, 0.85f));
+                hintText.rectTransform.sizeDelta = new Vector2(1100, 40);
+            }
+            hintText.text = string.IsNullOrEmpty(text) ? "" : "> " + text;
+            hintUntil = Time.time + duration;
+        }
+
+        void UpdateHint()
+        {
+            if (hintText == null || hintText.text.Length == 0) return;
+            float left = hintUntil - Time.time;
+            var c = hintText.color;
+            c.a = 0.85f * Mathf.Clamp01(left / 0.8f);
+            hintText.color = c;
+            if (left <= 0f) hintText.text = "";
+        }
 
         // ------------------------------------------------------------------ combat overlays
 
@@ -235,6 +313,16 @@ namespace Echoes.UI
         RectTransform vitalsFill;
         RawImage vitalsFillImg;
         Text vitalsLabel;
+        bool vitalsVisible = true;
+
+        /// <summary>Cutscenes hide the vitals bar; the REC line and timestamp always stay (it is footage).</summary>
+        public void SetVitalsVisible(bool visible)
+        {
+            vitalsVisible = visible;
+            if (vitalsFill == null) return;
+            vitalsFill.parent.gameObject.SetActive(visible);
+            vitalsLabel.gameObject.SetActive(visible);
+        }
 
         void EnsureVitals()
         {
@@ -254,7 +342,7 @@ namespace Echoes.UI
             vitalsFill.pivot = new Vector2(0f, 0.5f);
             vitalsFill.offsetMin = new Vector2(2f, 2f);
             vitalsFill.offsetMax = new Vector2(-2f, -2f);
-
+            SetVitalsVisible(vitalsVisible);
         }
 
         /// <summary>Health 0..1 and med-kit count, bottom-left like a vitals monitor clipped to the vest.</summary>
@@ -272,6 +360,7 @@ namespace Echoes.UI
         void LateUpdate()
         {
             UpdateCall();
+            UpdateHint();
             if (ammoText == null) return;
             if (ammoText.text.Length > 0 && Time.time > ammoUntil) ammoText.text = "";
             if (centerText.text.Length > 0 && Time.time > centerUntil) centerText.text = "";

@@ -49,6 +49,8 @@ namespace Echoes.Combat
         Vector3 kickRot, kickRotVel;
         Vector2 sway;
         Vector3 reloadPos, reloadRot;
+        Transform supportHand;
+        Vector3 supportRest;
         float flashTimer;
 
         public bool IsDrawn => state == State.Ready || state == State.Reloading;
@@ -74,7 +76,8 @@ namespace Echoes.Combat
             gunPivot = new GameObject("GunPivot").transform;
             gunPivot.SetParent(viewRoot, false);
             pistol = WeaponModels.Pistol(gunPivot, true);
-            WeaponModels.Hands(pistol.root);
+            WeaponModels.Hands(pistol.root, out supportHand);
+            supportRest = supportHand.localPosition;
 
             var lg = new GameObject("MuzzleLight", typeof(Light));
             lg.transform.SetParent(pistol.muzzle, false);
@@ -257,25 +260,100 @@ namespace Echoes.Combat
             Destroy(go, 10f);
         }
 
+        /// <summary>
+        /// A visible magazine change (owner: the reload has to be seen and heard). The gun comes up with the magwell
+        /// toward the camera, the old magazine drops out and falls to the ground, the support hand brings a fresh one
+        /// from the belt and slaps it home; on an empty gun it then racks the slide. Tactical 1.3 s, empty 1.7 s.
+        /// </summary>
         IEnumerator Reload()
         {
             state = State.Reloading;
             bool empty = ammoInMag == 0;
             var am = AudioManager.Instance;
-            float total = empty ? 2.0f : 1.55f;
-            bool magOut = false, magIn = false, racked = !empty;
+            float total = empty ? 1.7f : 1.3f;
+            const float release = 0.12f, fetch = 0.3f, align = 0.5f, seat = 0.62f, back = 0.74f;
+            const float rackGrab = 0.78f, rackPull = 0.86f, rackDone = 0.96f;
+            Vector3 axis = Quaternion.Euler(16f, 0f, 0f) * Vector3.down; // down the grip, along the magwell
+            Vector3 away = new Vector3(-0.07f, -0.26f, -0.1f);            // the belt pouch, out of view
+            Vector3 under = axis * 0.09f;                                  // fresh mag lined up under the grip
+            Vector3 cup = axis * 0.03f;                                    // the palm sits just under the base plate
+            Vector3 overSlide = new Vector3(0.02f, 0.085f, -0.035f), pulled = overSlide + new Vector3(0f, 0f, -0.035f);
+            GameObject fresh = null;
+            bool released = false, dropped = false, pouched = false, scraped = false, seated = false, racked = !empty;
+
             for (float t = 0f; t < total; t += Time.deltaTime)
             {
                 float p = t / total;
-                // Tilt the gun to the left and dip it toward the chest while the mag is swapped.
-                float w = Mathf.Sin(Mathf.Clamp01(p * 1.15f) * Mathf.PI);
-                reloadPos = new Vector3(-0.04f, -0.06f, -0.05f) * w;
-                reloadRot = new Vector3(-18f, 12f, 38f) * w;
-                if (!magOut && t > 0.25f) { magOut = true; pistol.mag.gameObject.SetActive(false); if (am != null) am.Play2D(SoundId.MagOut, 0.5f); }
-                if (!magIn && t > 0.95f) { magIn = true; pistol.mag.gameObject.SetActive(true); if (am != null) am.Play2D(SoundId.MagIn, 0.6f); kickPosVel += new Vector3(0f, 0.25f, 0f); }
-                if (!racked && t > 1.45f) { racked = true; slideLocked = false; if (am != null) am.Play2D(SoundId.SlideRack, 0.6f); kickPosVel += new Vector3(0f, 0f, -0.5f); }
+                // Up and turned: muzzle tipped back so the bottom of the grip faces the camera.
+                float w = Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(p / 0.14f)) * Mathf.SmoothStep(0f, 1f, Mathf.Clamp01((1f - p) / 0.16f));
+                reloadPos = new Vector3(-0.06f, 0.14f, -0.06f) * w;
+                reloadRot = new Vector3(-35f, 20f, 28f) * w;
+
+                // The old magazine slides out of the grip, then falls free.
+                if (!released && p >= release)
+                {
+                    released = true;
+                    if (am != null) am.Play2D(SoundId.MagOut, 0.85f);
+                }
+                if (released && !dropped)
+                {
+                    float k = Mathf.Clamp01((p - release) / 0.06f);
+                    pistol.mag.localPosition = axis * 0.08f * k;
+                    if (k >= 1f) { dropped = true; DropMagazine(); }
+                }
+
+                // Support hand: off to the pouch, back with a fresh magazine, up into the grip, back on the gun.
+                Vector3 hand;
+                Vector3? magAt = null;
+                if (p < 0.06f) hand = Vector3.zero;
+                else if (p < fetch) hand = Vector3.Lerp(Vector3.zero, away, Smooth(p, 0.06f, fetch));
+                else if (p < align) { magAt = Vector3.Lerp(away - cup, under, Smooth(p, fetch, align)); hand = magAt.Value + cup; }
+                else if (p < seat) { magAt = Vector3.Lerp(under, Vector3.zero, Smooth(p, align, seat)); hand = magAt.Value + cup; }
+                else if (p < back || !empty) hand = Vector3.Lerp(cup, Vector3.zero, Smooth(p, seat, back));
+                else if (p < rackGrab) hand = Vector3.zero;
+                else if (p < rackPull) hand = Vector3.Lerp(Vector3.zero, overSlide, Smooth(p, rackGrab, rackPull - 0.03f));
+                else if (p < rackDone) hand = Vector3.Lerp(overSlide, pulled, Smooth(p, rackPull - 0.03f, rackPull));
+                else hand = Vector3.Lerp(pulled, Vector3.zero, Smooth(p, rackDone - 0.04f, 1f));
+                supportHand.localPosition = supportRest + hand;
+
+                if (!pouched && p >= fetch - 0.05f)
+                {
+                    pouched = true;
+                    if (am != null) am.Play2D(SoundId.MagPouch, 0.6f);
+                    fresh = Instantiate(pistol.mag.gameObject, pistol.root);
+                    fresh.transform.localPosition = away - cup; // in the hand, down at the belt
+                    fresh.SetActive(true);
+                }
+                if (fresh != null && magAt.HasValue) fresh.transform.localPosition = magAt.Value;
+                if (!scraped && p >= align)
+                {
+                    scraped = true;
+                    if (am != null) am.Play2D(SoundId.MagIn, 0.7f);
+                }
+                if (!seated && p >= seat)
+                {
+                    seated = true;
+                    if (fresh != null) Destroy(fresh);
+                    pistol.mag.localPosition = Vector3.zero;
+                    pistol.mag.gameObject.SetActive(true);
+                    if (am != null) am.Play2D(SoundId.MagSeat, 0.9f);
+                    kickPosVel += new Vector3(0f, 0.3f, 0f);
+                }
+                if (!racked && p >= rackPull)
+                {
+                    // Slide pulled back and let go: it slams forward on a round.
+                    racked = true;
+                    slideLocked = false;
+                    slideBack = 1f;
+                    if (am != null) am.Play2D(SoundId.SlideRack, 0.85f);
+                    kickPosVel += new Vector3(0f, 0f, -0.5f);
+                }
                 yield return null;
             }
+            if (fresh != null) Destroy(fresh);
+            pistol.mag.localPosition = Vector3.zero;
+            pistol.mag.gameObject.SetActive(true);
+            supportHand.localPosition = supportRest;
             reloadPos = Vector3.zero;
             reloadRot = Vector3.zero;
             int need = magSize - ammoInMag;
@@ -285,6 +363,34 @@ namespace Echoes.Combat
             slideLocked = false;
             state = State.Ready;
             ShowAmmo();
+        }
+
+        static float Smooth(float p, float a, float b) => Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(a, b, p));
+
+        /// <summary>The spent magazine leaves the gun as a real object: it falls, bounces and clatters on the ground.</summary>
+        void DropMagazine()
+        {
+            var old = Instantiate(pistol.mag.gameObject, pistol.mag.position, pistol.mag.rotation);
+            old.name = "DroppedMag";
+            pistol.mag.gameObject.SetActive(false);
+            var col = old.AddComponent<BoxCollider>();
+            col.center = new Vector3(0f, -0.07f, -0.062f);
+            col.size = new Vector3(0.03f, 0.12f, 0.05f);
+            var rb = old.AddComponent<Rigidbody>();
+            rb.mass = 0.12f;
+            rb.linearVelocity = pistol.mag.TransformDirection(Quaternion.Euler(16f, 0f, 0f) * Vector3.down) * 1.2f + body.Velocity;
+            rb.angularVelocity = Random.insideUnitSphere * 6f;
+            PlayerCollision.Ignore(col);
+            StartCoroutine(MagClatter(old.transform));
+            Destroy(old, 30f);
+        }
+
+        IEnumerator MagClatter(Transform mag)
+        {
+            // About when it reaches the ground from chest height.
+            yield return new WaitForSeconds(0.42f);
+            if (mag != null && AudioManager.Instance != null)
+                AudioManager.Instance.PlayAt(SoundId.MagDrop, mag.position, 0.75f, Random.Range(0.95f, 1.05f), 1f, 20f, false);
         }
 
         /// <summary>Pistol-whip swing on the viewmodel. Returns false if the gun can't swing right now.</summary>

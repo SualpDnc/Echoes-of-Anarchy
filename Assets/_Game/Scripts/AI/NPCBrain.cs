@@ -137,27 +137,33 @@ namespace Echoes.AI
         /// </summary>
         void CarryLight()
         {
-            bool smiler = faction == Faction.Smiler;
             if (faction == Faction.Civilian || (weapon == NPCWeapon.Bat && Random.value < 0.5f)) return;
+            carriedLight = AttachCarriedLight(rig, faction == Faction.Smiler);
+        }
+
+        /// <summary>Head stream light with a LIVE tally (Smilers) or chest phone light (looters). Also used by scripted NPCs.</summary>
+        public static Light AttachCarriedLight(HumanoidRig rig, bool smiler)
+        {
             Transform mount = smiler ? rig[Bone.Head] : rig[Bone.Chest];
             var go = new GameObject("CarriedLight", typeof(Light));
             go.transform.SetParent(mount, false);
             go.transform.localPosition = smiler ? new Vector3(0.05f, 0.23f, 0.08f) : new Vector3(0.09f, 0.22f, 0.13f);
             go.transform.localRotation = Quaternion.Euler(smiler ? 6f : 12f, 0f, 0f);
-            carriedLight = go.GetComponent<Light>();
-            carriedLight.type = LightType.Spot;
-            carriedLight.color = smiler ? new Color(0.85f, 0.92f, 1f) : new Color(1f, 0.97f, 0.92f);
-            carriedLight.range = 18f;
-            carriedLight.spotAngle = 60f;
-            carriedLight.innerSpotAngle = 22f;
-            carriedLight.intensity = smiler ? 4.5f : 3.2f;
-            carriedLight.shadows = LightShadows.None;
+            var light = go.GetComponent<Light>();
+            light.type = LightType.Spot;
+            light.color = smiler ? new Color(0.85f, 0.92f, 1f) : new Color(1f, 0.97f, 0.92f);
+            light.range = 18f;
+            light.spotAngle = 60f;
+            light.innerSpotAngle = 22f;
+            light.intensity = smiler ? 4.5f : 3.2f;
+            light.shadows = LightShadows.None;
             // Visible lens so the source itself reads at a distance (bloom does the rest).
             PrimitiveMeshes.Part(go.transform, "Lens", PrimitiveType.Sphere, new Vector3(0f, 0f, 0.01f), Vector3.one * 0.03f,
                                  RuntimeMaterials.Lit(Color.white, 0.9f, 0f, new Color(1f, 0.97f, 0.92f) * 9f), null, false);
             if (smiler)
                 PrimitiveMeshes.Part(go.transform, "LiveTally", PrimitiveType.Sphere, new Vector3(-0.04f, 0.01f, 0f), Vector3.one * 0.014f,
                                      RuntimeMaterials.Lit(Color.red, 0.9f, 0f, new Color(1f, 0.05f, 0.03f) * 10f), null, false);
+            return light;
         }
 
         // ------------------------------------------------------------------ state machine

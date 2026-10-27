@@ -99,7 +99,8 @@ namespace Echoes.Audio
             Vector3 perp = new Vector3(-dir.y, 0f, dir.x);
             float offset = Random.Range(60f, 140f);
             Vector3 mid = c + new Vector3(dir.x, 0f, dir.y) * offset + Vector3.up * 1.5f;
-            Vector3 a = mid - perp * 220f, b = mid + perp * 220f;
+            const float reach = 340f; // silent from here on
+            Vector3 a = mid - perp * 300f, b = mid + perp * 300f;
 
             var go = new GameObject("PoliceDriveBy");
             var src = go.AddComponent<AudioSource>();
@@ -108,18 +109,41 @@ namespace Echoes.Audio
             src.clip = clip;
             src.loop = true;
             src.spatialBlend = 1f;
-            src.minDistance = 35f;
-            src.maxDistance = 600f;
+            // Owner: the siren must fade as it drives away. A custom curve falls all the way to silence at `reach`
+            // (the default log rolloff never reaches zero and kept it loud to the end).
+            src.rolloffMode = AudioRolloffMode.Custom;
+            src.maxDistance = reach;
+            src.SetCustomCurve(AudioSourceCurveType.CustomRolloff, new AnimationCurve(
+                new Keyframe(0f, 1f), new Keyframe(0.04f, 0.9f), new Keyframe(0.15f, 0.42f), new Keyframe(0.35f, 0.16f),
+                new Keyframe(0.65f, 0.04f), new Keyframe(1f, 0f)));
             src.dopplerLevel = 1f;
-            src.volume = 0.55f;
+            src.volume = 0f;
             src.time = Random.Range(0f, clip.length);
             go.transform.position = a;
             src.Play();
             float speed = Random.Range(18f, 28f), len = Vector3.Distance(a, b), t = 0f;
+            float nextOcclusion = 0f, occlusion = 1f;
             while (t < len)
             {
                 t += speed * Time.deltaTime;
-                go.transform.position = Vector3.Lerp(a, b, t / len);
+                float u = t / len;
+                go.transform.position = Vector3.Lerp(a, b, u);
+                // Fade in and out at the ends of the run, so it never starts or stops abruptly.
+                src.volume = 0.6f * Mathf.Clamp01(u / 0.1f) * Mathf.Clamp01((1f - u) / 0.1f);
+                var cam = Camera.main;
+                if (cam != null)
+                {
+                    float d = Vector3.Distance(cam.transform.position, go.transform.position);
+                    if (Time.time > nextOcclusion)
+                    {
+                        nextOcclusion = Time.time + 0.25f;
+                        Vector3 to = go.transform.position - cam.transform.position;
+                        occlusion = Physics.Raycast(cam.transform.position, to.normalized, d - 2f, ~0, QueryTriggerInteraction.Ignore) ? 0.4f : 1f;
+                    }
+                    // Air takes the highs first; buildings in between take more.
+                    float target = Mathf.Lerp(6000f, 700f, Mathf.Clamp01(d / reach)) * occlusion;
+                    lp.cutoffFrequency = Mathf.Lerp(lp.cutoffFrequency, Mathf.Max(400f, target), 1f - Mathf.Exp(-4f * Time.deltaTime));
+                }
                 yield return null;
             }
             Destroy(go);

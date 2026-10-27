@@ -6,8 +6,9 @@ using Echoes.UI;
 namespace Echoes.Narrative
 {
     /// <summary>
-    /// Development shortcuts for the narrative systems: F5 plays sample dialogue (radio, voicemail, the cloned
-    /// call), F6 jumps the clock to 18:59:50 so the 19:00 Purge beat can be watched. Stripped from release builds.
+    /// Development shortcuts for the narrative systems: F4 skips the ambulance ride to the crash site, F5 plays sample
+    /// dialogue (radio, voicemail, the cloned call), F6 jumps the clock to 18:59:50 so the 19:00 Purge beat can be
+    /// watched. Stripped from release builds.
     /// </summary>
     public class StoryDevHotkeys : MonoBehaviour
     {
@@ -18,6 +19,7 @@ namespace Echoes.Narrative
         {
             var kb = UnityEngine.InputSystem.Keyboard.current;
             if (kb == null) return;
+            if (kb.f4Key.wasPressedThisFrame && DemoDirector.Instance != null) DemoDirector.Instance.SkipToCrash();
             if (kb.f5Key.wasPressedThisFrame && DialogueDirector.Instance != null)
             {
                 if (running != null) StopCoroutine(running);

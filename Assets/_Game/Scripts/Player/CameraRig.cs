@@ -62,7 +62,13 @@ namespace Echoes.Player
         float smoothY;
         bool hasSmoothY;
 
+        Transform mount;
+        float mountYawLimit, mountPitchUp, mountPitchDown;
+
         public bool IsAiming { get; set; }
+        public bool IsMounted => mount != null;
+        /// <summary>Engine and road vibration in degrees while riding in a vehicle (set by the vehicle). Keep it small.</summary>
+        public float Vibration { get; set; }
         public Vector3 Forward => cam.transform.forward;
         public float Yaw => smYaw;
         public float Pitch => smPitch;
@@ -91,6 +97,37 @@ namespace Echoes.Player
             pitch = smPitch = newPitch;
         }
 
+        /// <summary>
+        /// Seats Daniel at a mount point (its position is the body root, its forward is straight ahead). Movement stops;
+        /// look is relative to the mount and limited, so he can turn his head in the cab but not spin round.
+        /// </summary>
+        public void Mount(Transform seat, float yawLimit = 105f, float pitchUp = 50f, float pitchDown = 38f)
+        {
+            mount = seat;
+            mountYawLimit = yawLimit;
+            mountPitchUp = pitchUp;
+            mountPitchDown = pitchDown;
+            yaw = smYaw = 0f;
+            pitch = smPitch = 0f;
+            body.enabled = false;
+            body.Controller.enabled = false;
+            hasSmoothY = false;
+        }
+
+        /// <summary>Back on his feet: world yaw from the current view, body physics on again.</summary>
+        public void Unmount()
+        {
+            if (mount == null) return;
+            float worldYaw = (mount.rotation * Quaternion.Euler(0f, smYaw, 0f)).eulerAngles.y;
+            mount = null;
+            Vibration = 0f;
+            transform.rotation = Quaternion.Euler(0f, worldYaw, 0f);
+            yaw = smYaw = worldYaw;
+            body.Controller.enabled = true;
+            body.enabled = true;
+            hasSmoothY = false;
+        }
+
         /// <summary>Kick in degrees (x = pitch up, y = yaw).</summary>
         public void AddRecoil(Vector2 kick) => recoilVel += kick * 22f;
 
@@ -113,12 +150,22 @@ namespace Echoes.Player
             else if (Cursor.lockState != CursorLockMode.Locked && UnityEngine.InputSystem.Mouse.current != null
                      && UnityEngine.InputSystem.Mouse.current.leftButton.wasPressedThisFrame)
             { Cursor.lockState = CursorLockMode.Locked; Cursor.visible = false; }
-            if (Cursor.lockState != CursorLockMode.Locked) return;
+            if (Cursor.lockState != CursorLockMode.Locked)
+            {
+                // Still ride along when the cursor is free, or the vehicle drives off without the camera.
+                if (mount != null) transform.SetPositionAndRotation(mount.position, mount.rotation * Quaternion.Euler(0f, smYaw, 0f));
+                return;
+            }
 
             // --- Look ---
             Vector2 d = input.LookDelta * sensitivity * (IsAiming ? 0.7f : 1f);
             yaw += d.x;
             pitch = Mathf.Clamp(pitch - d.y, minPitch, maxPitch);
+            if (mount != null)
+            {
+                yaw = Mathf.Clamp(yaw, -mountYawLimit, mountYawLimit);
+                pitch = Mathf.Clamp(pitch, -mountPitchUp, mountPitchDown);
+            }
             float k = 1f - Mathf.Exp(-lookSmoothing * dt);
             smYaw = Mathf.LerpAngle(smYaw, yaw, k);
             smPitch = Mathf.Lerp(smPitch, pitch, k);
@@ -127,13 +174,15 @@ namespace Echoes.Player
             recoil += recoilVel * dt;
             recoilVel += (-recoil * 160f - recoilVel * 18f) * dt;
 
-            transform.rotation = Quaternion.Euler(0f, smYaw, 0f);
+            if (mount != null) transform.SetPositionAndRotation(mount.position, mount.rotation * Quaternion.Euler(0f, smYaw, 0f));
+            else transform.rotation = Quaternion.Euler(0f, smYaw, 0f);
             pivot.localRotation = Quaternion.Euler(smPitch - recoil.x, recoil.y, 0f);
 
             // --- Mount height follows crouch; sudden body height changes are eased ---
             // The capsule snaps up curbs (step offset) and can jitter by millimetres on contact; a body-worn
             // camera rides those out. Jumps and falls are followed closely so the camera never lags far behind.
             float bodyY = transform.position.y;
+            if (mount != null) smoothY = bodyY; // seated: the camera rides the cab exactly
             if (!hasSmoothY || Mathf.Abs(smoothY - bodyY) > 1f) { smoothY = bodyY; hasSmoothY = true; }
             smoothY = Mathf.Lerp(smoothY, bodyY, 1f - Mathf.Exp(-(body.IsGrounded ? heightFollow : heightFollow * 2f) * dt));
             smoothY = Mathf.Clamp(smoothY, bodyY - 0.4f, bodyY + 0.4f);
@@ -152,7 +201,7 @@ namespace Echoes.Player
             lean = Mathf.Lerp(lean, targetLean, 1f - Mathf.Exp(-leanSpeed * dt));
 
             // --- Step bob, phase-locked to real footsteps ---
-            float targetBob = body.IsGrounded ? Mathf.Clamp01(body.HorizontalSpeed / body.walkSpeed) : 0f;
+            float targetBob = mount != null ? 0f : body.IsGrounded ? Mathf.Clamp01(body.HorizontalSpeed / body.walkSpeed) : 0f;
             bobWeight = Mathf.Lerp(bobWeight, targetBob, 1f - Mathf.Exp(-8f * dt));
             float stepT = (body.StepIndex + body.StepPhase) * Mathf.PI; // one PI per step
             float sprintMul = body.IsSprinting ? sprintBobMultiplier : body.IsCrouching ? 0.6f : 1f;
@@ -183,6 +232,9 @@ namespace Echoes.Player
             float sx = (Mathf.PerlinNoise(noiseSeed + 50f, t * 22f) - 0.5f) * 2f * 6f * shake;
             float sy = (Mathf.PerlinNoise(noiseSeed + 60f, t * 22f) - 0.5f) * 2f * 6f * shake;
             float sz = (Mathf.PerlinNoise(noiseSeed + 70f, t * 22f) - 0.5f) * 2f * 8f * shake;
+            // Riding: a fine engine/road buzz on top (degrees, set by the vehicle).
+            sx += (Mathf.PerlinNoise(noiseSeed + 80f, t * 17f) - 0.5f) * 2f * Vibration;
+            sz += (Mathf.PerlinNoise(noiseSeed + 90f, t * 13f) - 0.5f) * 2f * Vibration * 0.6f;
 
             Vector3 camPos = new Vector3(bobX + lean * leanDistance, bobY + landOffset * 0.12f - Mathf.Abs(lean) * 0.06f, 0f);
             cam.transform.localPosition = camPos;

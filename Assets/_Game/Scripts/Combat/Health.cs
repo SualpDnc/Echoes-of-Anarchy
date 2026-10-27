@@ -42,6 +42,13 @@ namespace Echoes.Combat
             }
         }
 
+        /// <summary>Sets hit points without a hit reaction (story beats, e.g. waking up hurt after the crash).</summary>
+        public void SetHealth(float value)
+        {
+            if (IsDead) return;
+            Current = Mathf.Clamp(value, 1f, maxHealth);
+        }
+
         public void Heal(float amount)
         {
             if (IsDead) return;
