@@ -55,6 +55,8 @@ namespace Echoes.Rendering
             ['\''] = new[] { "  #  ", "  #  ", " #   ", "     ", "     ", "     ", "     " },
             ['!'] = new[] { "  #  ", "  #  ", "  #  ", "  #  ", "  #  ", "     ", "  #  " },
             ['-'] = new[] { "     ", "     ", "     ", "#####", "     ", "     ", "     " },
+            [':'] = new[] { "     ", "  #  ", "  #  ", "     ", "  #  ", "  #  ", "     " },
+            [')'] = new[] { " #   ", "  #  ", "   # ", "   # ", "   # ", "  #  ", " #   " },
         };
 
         /// <summary>Texture size in "cells" for the text (to size the quad it goes on).</summary>
@@ -68,8 +70,24 @@ namespace Echoes.Rendering
 
         public static Texture2D Paint(string text, bool spray, int cell, int seed)
         {
+            var alpha = Mask(text, spray, cell, seed, out int tw, out int th);
+            var px = new Color32[tw * th];
+            for (int i = 0; i < px.Length; i++) px[i] = new Color32(255, 255, 255, (byte)(Mathf.Clamp01(alpha[i]) * 255f));
+            var tex = new Texture2D(tw, th, TextureFormat.RGBA32, true, false)
+            {
+                name = "Text_" + text.Replace('\n', '_'), wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear,
+                anisoLevel = 4, hideFlags = HideFlags.DontSave
+            };
+            tex.SetPixels32(px);
+            tex.Apply(true, true);
+            return tex;
+        }
+
+        /// <summary>The text's coverage (0..1, row 0 at the bottom) without a texture, to stamp into another image (a print's caption, a note).</summary>
+        public static float[] Mask(string text, bool spray, int cell, int seed, out int tw, out int th)
+        {
             var size = Aspect(text, spray);
-            int tw = Mathf.RoundToInt(size.x * cell), th = Mathf.RoundToInt(size.y * cell);
+            tw = Mathf.RoundToInt(size.x * cell); th = Mathf.RoundToInt(size.y * cell);
             var alpha = new float[tw * th];
             var rng = new System.Random(seed);
             var lines = text.ToUpperInvariant().Split('\n');
@@ -107,16 +125,7 @@ namespace Echoes.Rendering
                     if (alpha[y * tw + x] > 0.05f || Near(alpha, tw, th, x, y, cell)) alpha[y * tw + x] = Mathf.Max(alpha[y * tw + x], (float)rng.NextDouble() * 0.35f);
                 }
 
-            var px = new Color32[tw * th];
-            for (int i = 0; i < px.Length; i++) px[i] = new Color32(255, 255, 255, (byte)(Mathf.Clamp01(alpha[i]) * 255f));
-            var tex = new Texture2D(tw, th, TextureFormat.RGBA32, true, false)
-            {
-                name = "Text_" + text.Replace('\n', '_'), wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Bilinear,
-                anisoLevel = 4, hideFlags = HideFlags.DontSave
-            };
-            tex.SetPixels32(px);
-            tex.Apply(true, true);
-            return tex;
+            return alpha;
         }
 
         static void Disc(float[] a, int tw, int th, float cx, float cy, float rad, float strength, System.Random rng)

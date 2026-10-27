@@ -15,7 +15,8 @@ namespace Echoes.Audio
         VoiceDaniel, VoiceLuis, VoiceMiaPhone, VoiceMiaClone, VoiceDispatch, VoiceMale, VoiceFemale, VoiceSmiler, VoiceHale,
         PhoneRing, PhonePickup, PhoneHangup, VoicemailBeep, RadioSquelch,
         EngineDiesel, EngineTruck, CarHorn, CrashImpact, MetalScrape, TireScreech, Tinnitus, TapeSkip,
-        VoiceLuisRadio, MagDrop, MagPouch, MagSeat, ImpactHead, FireworkLaunch, FireworkBurst
+        VoiceLuisRadio, MagDrop, MagPouch, MagSeat, ImpactHead, FireworkLaunch, FireworkBurst,
+        MusicBox, DoorSlam
     }
 
     /// <summary>
@@ -83,6 +84,8 @@ namespace Echoes.Audio
                 new Recipe { id = SoundId.ImpactHead, variations = 2, render = ImpactHead },
                 new Recipe { id = SoundId.FireworkLaunch, render = FireworkLaunch },
                 new Recipe { id = SoundId.FireworkBurst, render = FireworkBurst },
+                new Recipe { id = SoundId.MusicBox, render = MusicBox },
+                new Recipe { id = SoundId.DoorSlam, variations = 2, render = DoorSlam },
             };
             all.AddRange(VoiceRecipes());
             all.AddRange(VehicleRecipes());

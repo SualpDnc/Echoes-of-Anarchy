@@ -36,13 +36,13 @@ namespace Echoes.Narrative
             door.door.AddComponent<DoorPhotoInteractable>().scene = this;
         }
 
-        public IEnumerator Play(AlleySequence alleys)
+        public IEnumerator Play()
         {
             player = GameObject.FindGameObjectWithTag("Player");
             if (player == null) yield break;
 
-            // Into the yard (or started there).
-            while (!alleys.Done && !InYard()) yield return null;
+            // Into the yard (up the back alley from the house, or started there).
+            while (!InYard()) yield return null;
             playerReady = true;
             StartCoroutine(BlinkRec());
 

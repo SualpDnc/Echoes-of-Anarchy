@@ -4,8 +4,9 @@ using UnityEngine;
 
 namespace Echoes.Core
 {
-    /// <summary>The places the demo restarts from after a death, in story order.</summary>
-    public enum CheckpointStage { None, CrashSite, GasStation, Alleys, School }
+    /// <summary>The places the demo restarts from after a death, in story order (Alleys = behind the gas station, House = out of the back gate after the raid).</summary>
+    /// <remarks>Not serialized anywhere (only compared in order), so stages can be inserted.</remarks>
+    public enum CheckpointStage { None, CrashSite, GasStation, Alleys, House, School }
 
     /// <summary>
     /// Where Daniel comes back after a death (owner: dying sent him back to the ambulance ride). DemoDirector saves at

@@ -17,8 +17,8 @@ namespace Echoes.World
         public const float GateAlleyZ0 = -76.5f, GateAlleyZ1 = -72.5f;        // x −62..−42
         public const float NorthAlleyX0 = -66f, NorthAlleyX1 = -62f;          // z −90..−30 (fence), −22 beyond it
         public const float NorthFenceZ = -30f, NorthAlleySouthZ = -90f;
-        public const float BackAlleyX0 = -84f, BackAlleyX1 = -80f;            // z −52..−22
-        public const float BackAlleySouthZ = -52f;
+        public const float BackAlleyX0 = -84f, BackAlleyX1 = -80f;            // z −72..−22 (8b: down to the back gate of Daniel's house)
+        public const float BackAlleySouthZ = -72f;
         public const float GarageZ0 = -44f, GarageZ1 = -36f;                  // x −80..−66
         public const float ShutterZ0 = -42f, ShutterZ1 = -38f, ShutterGap = 1.5f; // crouched Daniel is 1.15 m, the NavMesh agent 2 m
         public const float GarageDoorZ = -40f;
@@ -56,10 +56,13 @@ namespace Echoes.World
             Row(pal, b, new Vector3(-42.4f, y, GateAlleyZ0), Vector3.forward, 19.6f, Depth, rng, 2, 4);
             // North alley, east side, from the gate alley up to the building closing its north end.
             Row(pal, b, new Vector3(NorthAlleyX1, y, -22f), Vector3.left, 38f, Depth, rng, 3, 5);
-            // North alley, west side, south and north of the garage (their backs line the back alley).
-            Row(pal, b, new Vector3(NorthAlleyX0, y, NorthAlleySouthZ), Vector3.right, GarageZ0 - NorthAlleySouthZ, Depth, rng, 2, 4);
+            // North alley, west side, south and north of the garage (their backs line the back alley). Daniel's house
+            // (HouseBuilder) takes the lot between the two southern rows, across from the gate alley.
+            Row(pal, b, new Vector3(NorthAlleyX0, y, NorthAlleySouthZ), Vector3.right, HouseBuilder.LotZ0 - NorthAlleySouthZ, Depth, rng, 2, 4);
+            Row(pal, b, new Vector3(NorthAlleyX0, y, HouseBuilder.LotZ1), Vector3.right, GarageZ0 - HouseBuilder.LotZ1, Depth, rng, 2, 3);
             Row(pal, b, new Vector3(NorthAlleyX0, y, GarageZ1), Vector3.right, -22f - GarageZ1, Depth, rng, 3, 4);
             // Back alley, west side.
+            Row(pal, b, new Vector3(BackAlleyX0, y, BackAlleySouthZ), Vector3.right, -60f - BackAlleySouthZ, Depth, rng, 2, 3);
             Row(pal, b, new Vector3(BackAlleyX0, y, -60f), Vector3.right, 38f, Depth, rng, 3, 5);
             // Closing the north alley and the yard's east side.
             Row(pal, b, new Vector3(-48f, y, YardZ0), Vector3.back, 24f, Depth, rng, 2, 3, mirror: true);
@@ -118,7 +121,8 @@ namespace Echoes.World
             s.Box(wall, new Vector3(ex, y + h / 2f, (ShutterZ1 + z1) / 2f), new Vector3(t, h, z1 - ShutterZ1));
             float top = 3.4f;
             s.Box(wall, new Vector3(ex, y + (top + h) / 2f, cz), new Vector3(t, h - top, ShutterZ1 - ShutterZ0));
-            float sb = ShutterGap; // its bottom edge: a crouched man fits, a standing one or a NavMesh agent does not
+            float sb = 0.02f; // 8b: shut. (The 6d chase crawled under it at ShutterGap; the house replaced the chase, and an open
+                              // shutter would be a way round the house to the school.)
             s.Box(pal.shutter, new Vector3(x1 + 0.06f, y + (sb + top) / 2f, (ShutterZ0 + ShutterZ1) / 2f), new Vector3(0.06f, top - sb, ShutterZ1 - ShutterZ0));
             for (float r = sb + 0.12f; r < top; r += 0.12f)
                 s.mb.Box(pal.shutter, new Vector3(x1 + 0.1f, y + r, (ShutterZ0 + ShutterZ1) / 2f), new Vector3(0.02f, 0.03f, ShutterZ1 - ShutterZ0));
@@ -252,14 +256,7 @@ namespace Echoes.World
             WallLamp(pal, s, root, new Vector3(NorthAlleyX1 + 0.05f, y + 3.4f, -60f), Vector3.left, 1.8f, null);
             WallLamp(pal, s, root, new Vector3(BackAlleyX1 + 0.05f, y + 3.4f, -30f), Vector3.left, 1.8f, null);
 
-            // A work lamp over the shutter: it is the only way on, so it has to be seen from down the alley. The one shadow here.
-            s.mb.Box(pal.metalDark, new Vector3(NorthAlleyX0 + 0.25f, y + 3.85f, (ShutterZ0 + ShutterZ1) / 2f), new Vector3(0.5f, 0.06f, 0.06f));
-            s.mb.Box(pal.lampGlass, new Vector3(NorthAlleyX0 + 0.45f, y + 3.78f, (ShutterZ0 + ShutterZ1) / 2f), new Vector3(0.22f, 0.1f, 0.3f));
-            var sl = Spot(root, new Vector3(NorthAlleyX0 + 0.5f, y + 3.7f, (ShutterZ0 + ShutterZ1) / 2f), new Vector3(0.35f, -1f, 0f), new Color(1f, 0.72f, 0.42f), 9f, 14f, 120f, true);
-            sl.name = "ShutterLamp";
-            // Light from inside spills out under the shutter: a bright slot at floor level that reads as "under here".
-            var spill = Point(root, new Vector3(NorthAlleyX0 - 1.2f, y + 0.5f, (ShutterZ0 + ShutterZ1) / 2f), new Color(1f, 0.85f, 0.6f), 4f, 6f);
-            spill.name = "ShutterSpill";
+            // (8b: the shutter is shut; its work lamp and the light spilling under it are gone.)
 
             // A tube inside the garage, dying.
             var tube = Point(root, new Vector3((BackAlleyX1 + NorthAlleyX0) / 2f, y + 4.1f, GarageDoorZ), new Color(0.8f, 0.95f, 0.88f), 1.6f, 9f);

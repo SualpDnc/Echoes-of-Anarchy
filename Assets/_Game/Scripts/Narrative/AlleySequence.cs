@@ -19,6 +19,8 @@ namespace Echoes.Narrative
     /// seem to mind ("See you at school"). In the back alley, a Smiler in the lit school yard lights a firework that
     /// bursts into a grin, and runs into the school. The yard gate ends the sequence.
     /// </summary>
+    // 8b: no longer played (the house replaced the chase; the garage shutter is shut). Setup still places the alleys'
+    // pickups. The chase, the shutter escape and the firework are kept for parts that later phases may reuse.
     public class AlleySequence : MonoBehaviour
     {
         public bool Done { get; private set; }

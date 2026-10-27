@@ -64,9 +64,14 @@ namespace Echoes.World
             GasStationLot(pal, fx, buildings, props, seed);
             // The back alleys and the school (sequence 4), on the empty block behind the west row; own rng as well.
             AlleyBuilder.Build(pal, fx, props, new System.Random(seed + 404));
+            // Daniel's house on the lot the alleys leave across from the gate alley (8b); own rng too.
+            HouseBuilder.Build(pal, props, new System.Random(seed + 505));
 
             for (float z = -85f; z <= 95f; z += 30f) res.probePoints.Add(new Vector3(0f, 2.5f, z));
             res.probePoints.Add(new Vector3(-64f, 2.5f, -60f));
+            res.probePoints.Add(new Vector3(-71f, HouseBuilder.F0 + 1.5f, -60.5f));
+            res.probePoints.Add(new Vector3(-71f, HouseBuilder.F1 + 1.4f, -66.5f));
+            res.probePoints.Add(new Vector3(-76f, HouseBuilder.F0 + 1.5f, -64f));
             res.probePoints.Add(new Vector3(-82f, 2.5f, -36f));
             res.probePoints.Add(new Vector3(-86f, 3f, -14f));
             res.probePoints.Add(new Vector3(-50f, 2.5f, CrossZ));

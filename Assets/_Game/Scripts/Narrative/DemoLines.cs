@@ -185,6 +185,52 @@ namespace Echoes.Narrative
             L(Speaker.Daniel, "I'm through.", "Geçtim.").Via(LineChannel.Radio),
         };
 
+        // ------------------------------------------------------------------ 8b: Daniel's house
+
+        /// <summary>Past the gas station's back gate: "Mia" again (the clone). The house is right across the alley.</summary>
+        public static Line[] HouseCall => new[]
+        {
+            L(Speaker.Mia, "Dad? I'm in the closet. They came inside... I can hear them on the stairs.",
+                           "Baba? Dolaptayım. İçeri girdiler... Merdivende seslerini duyuyorum.").Glitch(0.2f),
+            L(Speaker.Daniel, "Stay in there. Don't make a sound. I'm right outside.", "Orada kal. Ses çıkarma. Hemen dışarıdayım."),
+            L(Speaker.Mia, "Please hurry, Dad.", "Lütfen acele et baba.").Glitch(0.5f),
+        };
+
+        public static Line HouseEnter => L(Speaker.Daniel, "Mia? Mia, it's Dad!", "Mia? Mia, benim, baban!");
+        public static Line HouseSteps => L(Speaker.Daniel, "Mia...?", "Mia...?");
+
+        /// <summary>The phone in Mia's closet, looping her voice. Daniel says what it means (owner: make the story clear).</summary>
+        public static Line[] ClosetPhone => new[]
+        {
+            L(Speaker.Daniel, "A phone...", "Bir telefon..."),
+            L(Speaker.Daniel, "It's a recording. They're using her voice.", "Bu bir kayıt. Onun sesini kullanıyorlar."),
+            L(Speaker.Daniel, "Where is she?", "Nerede o?"),
+        };
+
+        /// <summary>The unit photo on Mia's bed, Vance's face scratched out, and the note.</summary>
+        public static Line[] UnitPhotoLook => new[]
+        {
+            L(Speaker.Daniel, "Our unit. Twenty-nineteen.", "Birliğimiz. İki bin on dokuz."),
+            L(Speaker.Daniel, "Vance.", "Vance."),
+            L(Speaker.Daniel, "You're supposed to be in Leavenworth.", "Senin askerî cezaevinde olman gerekiyordu."),
+        };
+
+        public static Line[] NoteLook => new[]
+        {
+            L(Speaker.Daniel, "\"School. Come alone.\"", "\"Okul. Yalnız gel.\""),
+            L(Speaker.Daniel, "He wants me at the school.", "Beni okulda istiyor."),
+        };
+
+        public static Line RaidSeen => L(Speaker.Daniel, "Headlights. They're back. Out the back, now.", "Farlar. Geri geldiler. Arkadan çık, hemen.");
+
+        public static Line[] RaidTaunts => new[]
+        {
+            L(Speaker.Smiler, "Danny! Did you find her? No?", "Danny! Buldun mu onu? Bulamadın mı?"),
+            L(Speaker.Smiler, "Knock knock, Danny!", "Tak tak, Danny!"),
+        };
+
+        public static Line RaidWithdraw => L(Speaker.Smiler, "Not here, Danny! The show's at the school!", "Burada değil Danny! Gösteri okulda!");
+
         // ------------------------------------------------------------------ sequence 4: the alleys
 
         public static Line AfterSchoolCall => L(Speaker.Daniel, "Hold on, sweetheart. I'm coming.", "Dayan tatlım. Geliyorum.");

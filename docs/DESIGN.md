@@ -189,6 +189,10 @@ their portfolio, with a public GitHub repository and a README aimed at employers
 | The first call | "Mia" whispers: someone is at the door, knocking, "they're smiling, Dad. They're all smiling." Daniel: lock your door, get in the closet, I'm coming. The line dies in static. The voice is almost perfect; only the last syllable catches (a hint for later) | Owner's choice over a screaming call |
 | Vance's first trace | **At home**: where the Marine photo hung, an old unit photo is left, Vance's face scratched out; Daniel: "Vance..." | Owner's choice over Luis mentioning his name in the ambulance |
 | Intro card | **Shortened** to about 8 s: the date and one sentence of rules; the Voss quote is dropped | Owner's choice |
+| The house (8b) | **A two-storey detached house**: a small front yard and porch; downstairs the hall, the living room and the kitchen; upstairs Mia's room (with the closet), the bathroom and Daniel's room | Owner's choice over a flat and a townhouse |
+| Inside | **A tense search with the flashlight, no enemies**, scares made of sound and light; once the clues are found, headlights sweep the windows: the Smilers arrive and Daniel gets out through the back | Owner's choice over a search only and over a Smiler hiding inside |
+| The closet | **A phone playing Mia's voice** on a loop ("Dad? There's someone at the door..."). Daniel: "It's a recording... they're using her voice." He understands the clone but believes they have taken her; "Mia was never here" stays for the finale | Owner's choice over an empty closet with signs of a struggle |
+| The clue | **On Mia's bed**: the old unit photo with Vance's face scratched out, and the note "SCHOOL. COME ALONE. :)". Daniel: "Vance..." | Owner's choice over the living-room photo wall |
 
 ### The 30-minute flow (agreed with the owner; times approximate)
 | Time | Scene | What happens |
@@ -209,7 +213,7 @@ their portfolio, with a public GitHub repository and a README aimed at employers
 | Phase | Content | Status |
 |---|---|---|
 | 8a | Re-cut cold open (about 45 s: the radio, Rachel's voicemail dismissed, the clone's whispered call that dies), the 8-second intro card | **Done**, tested by the owner. (Daniel's clarity lines and Vance's first trace come with the scenes they belong to: 8b, 8e) |
-| 8b | Home: Daniel's house (exterior and interior generator), the search, the clue | Not started |
+| 8b | Home: Daniel's house (exterior and interior generator), the search, the clue | **Code done**, awaiting the owner's test (rebuild the scene) |
 | 8c | The underpass: tunnel set piece, the sound-hunting enemy | Not started |
 | 8d | The Purge party (mask, social stealth, being recognised) and the stationary pickup turret | Not started |
 | 8e | The school and the gym finale: Vance, the reveal, the call to Mia, the shot, Hale's note | Not started |

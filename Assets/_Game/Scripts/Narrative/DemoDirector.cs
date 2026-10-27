@@ -9,14 +9,14 @@ using Echoes.World;
 namespace Echoes.Narrative
 {
     /// <summary>
-    /// Runs the demo (Act 1): sequence 1 (cold open in the ambulance), then sequence 2 (the crash site); sequences 3
-    /// (the gas station), 4 (the alleys) and 5 (the school door) are set up from the start and play out when Daniel gets
-    /// there. `startAt` can begin at the crash site, the gas station, the alleys or the school yard (for testing), or
-    /// skip the story entirely; F4 skips the ride while it plays. It also keeps the checkpoints: a death restarts at the
+    /// Runs the game: sequence 1 (cold open in the ambulance), then sequence 2 (the crash site); the gas station, Daniel's
+    /// house (8b) and the school door are set up from the start and play out when Daniel gets there. `startAt` can begin
+    /// at the crash site, the gas station, behind it (Alleys: the house call comes next) or the school yard (for testing),
+    /// or skip the story entirely; F4 skips the ride while it plays. It also keeps the checkpoints: a death restarts at the
     /// last one (Core/Checkpoint) instead of at the ambulance ride.
     /// </summary>
     [RequireComponent(typeof(ColdOpenSequence), typeof(CrashSiteSequence), typeof(GasStationSequence))]
-    [RequireComponent(typeof(AlleySequence), typeof(SchoolSequence))] // RequireComponent takes at most three types
+    [RequireComponent(typeof(AlleySequence), typeof(SchoolSequence), typeof(HouseSequence))] // RequireComponent takes at most three types
     public class DemoDirector : MonoBehaviour
     {
         // New entries go at the end: the field is serialized as an int.
@@ -32,6 +32,7 @@ namespace Echoes.Narrative
         CrashSiteSequence crashSite;
         GasStationSequence gasStation;
         AlleySequence alleys;
+        HouseSequence house;
         SchoolSequence school;
         Coroutine running;
 
@@ -43,6 +44,7 @@ namespace Echoes.Narrative
             crashSite = GetComponent<CrashSiteSequence>();
             gasStation = GetComponent<GasStationSequence>();
             alleys = GetComponent<AlleySequence>();
+            house = GetComponent<HouseSequence>();
             school = GetComponent<SchoolSequence>();
         }
 
@@ -59,10 +61,11 @@ namespace Echoes.Narrative
             coldOpen.Build(fx);
             gasStation.Setup();
             StartCoroutine(gasStation.Play());
-            alleys.Setup();
-            StartCoroutine(alleys.Play(gasStation));
+            alleys.Setup();   // the alleys' pickups; their chase is gone (8b: the house replaces it)
+            house.Setup();
+            StartCoroutine(house.Play(gasStation));
             school.Setup();
-            StartCoroutine(school.Play(alleys));
+            StartCoroutine(school.Play());
             StartCoroutine(SaveCheckpoints());
 
             // Back from a death: the last checkpoint, as things stood then.
@@ -103,7 +106,8 @@ namespace Echoes.Narrative
                     if (coldOpen.Crashed) Save(CheckpointStage.CrashSite);
                     if (crashSite.Resolved && !crashSite.Busy && p.transform.position.z < -50f) Save(CheckpointStage.GasStation);
                     if (gasStation.Done) Save(CheckpointStage.Alleys);
-                    if (alleys.Done || school.Reached) Save(CheckpointStage.School);
+                    if (house.Done) Save(CheckpointStage.House);
+                    if (school.Reached) Save(CheckpointStage.School);
                 }
                 yield return null;
             }
@@ -142,6 +146,7 @@ namespace Echoes.Narrative
             if (clock != null && t != System.DateTime.MinValue) clock.JumpTo(t.Hour, t.Minute, t.Second);
             crashSite.RestoreAfterCheckpoint();
             if (stage >= CheckpointStage.Alleys) gasStation.RestoreAfterCheckpoint();
+            if (stage >= CheckpointStage.House) house.RestoreAfterCheckpoint();
 
             var p = GameObject.FindGameObjectWithTag("Player");
             if (p != null)
@@ -169,6 +174,7 @@ namespace Echoes.Narrative
             switch (stage)
             {
                 case CheckpointStage.Alleys: pos = new Vector3(-43.5f, DistrictGenerator.Curb + 0.05f, -74.5f); yaw = 270f; objective = "Get home to Mia"; break;
+                case CheckpointStage.House: pos = new Vector3(-82f, DistrictGenerator.Curb + 0.05f, -58f); yaw = 0f; objective = "The school - north up the back alley"; break;
                 case CheckpointStage.School: pos = new Vector3(-82f, DistrictGenerator.Curb + 0.05f, -20f); yaw = 0f; objective = "Find Mia - the school"; break;
                 default: pos = new Vector3(-2f, 0.05f, -45f); yaw = 180f; objective = "Get home to Mia - south on Harlow"; break;
             }

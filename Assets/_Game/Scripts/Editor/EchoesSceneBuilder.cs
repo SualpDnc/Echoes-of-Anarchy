@@ -115,6 +115,7 @@ namespace Echoes.EditorTools
             go.AddComponent<CrashSiteSequence>();
             go.AddComponent<GasStationSequence>();
             go.AddComponent<AlleySequence>();
+            go.AddComponent<HouseSequence>();
             go.AddComponent<SchoolSequence>();
             go.AddComponent<DemoDirector>().fx = fx;
         }

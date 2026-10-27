@@ -10,7 +10,8 @@ namespace Echoes.Rendering
     /// cheekbones, brow, nose, sockets with eyes looking at the lens, lips, ears, a high-and-tight cut) on a neck, the
     /// dress-blue coat with its high collar and red piping, brass buttons and a ribbon bar, and the white cover with
     /// its black patent visor and gold emblem; lit like a studio portrait (warm key with soft shadows, cool fill, a
-    /// rim light, occlusion) in front of an out-of-focus flag. Returns linear colour; ProcTextures ages the print.
+    /// rim light, occlusion) in front of an out-of-focus flag. RenderGroup shoots four of them for the unit photo in
+    /// Daniel's house (8b). Returns linear colour; ProcTextures ages the print.
     /// Pure math, so rows render in parallel.
     /// </summary>
     public static class MarinePortrait
@@ -18,10 +19,6 @@ namespace Echoes.Rendering
         const int Skin = 0, Eye = 1, Lips = 2, Blues = 3, White = 4, Visor = 5, Brass = 6;
 
         static readonly Vector3 HeadC = new Vector3(0f, 1.675f, 0f);
-        static readonly Vector3 CamPos = new Vector3(0f, 1.6f, 2.1f);
-        static readonly Vector3 Target = new Vector3(0f, 1.57f, 0f);
-        const float TanHalf = 0.145f;
-        const float Yaw = 10f * Mathf.Deg2Rad;   // turned a little off the lens, as these portraits are
 
         static readonly Vector3 Key = new Vector3(0.55f, 0.62f, 0.56f).normalized;
         static readonly Vector3 Fill = new Vector3(-0.75f, 0.1f, 0.65f).normalized;
@@ -29,21 +26,76 @@ namespace Echoes.Rendering
         static readonly float[] ButtonY = { 1.415f, 1.345f, 1.275f, 1.205f };
         static float[] buttonZ;
 
+        /// <summary>One man in the shot: where he stands, how he is turned, his size and skin tone.</summary>
+        struct Man { public Vector3 off; public float yaw, scale; public Color tone; }
+
+        // The shot being rendered. Set before the parallel loop and only read inside it.
+        static Man[] men;
+        static Vector3 camPos, camTarget;
+        static float tanHalf, near, far;
+
+        /// <summary>Daniel's portrait: one man turned a little off the lens, as these portraits are.</summary>
         public static Color[] Render(int w, int h)
+        {
+            men = new[] { new Man { off = Vector3.zero, yaw = 10f, scale = 1f, tone = Color.white } };
+            camPos = new Vector3(0f, 1.6f, 2.1f);
+            camTarget = new Vector3(0f, 1.57f, 0f);
+            tanHalf = 0.145f; near = 1.5f; far = 2.9f;
+            return Shoot(w, h);
+        }
+
+        /// <summary>
+        /// The unit photo from Daniel's house (8b): four Marines in dress blues shoulder to shoulder, each a little
+        /// different (height, turn, build, skin). Index 2 is Vance (ProcTextures scratches his face out).
+        /// </summary>
+        public static Color[] RenderGroup(int w, int h)
+        {
+            men = new[]
+            {
+                new Man { off = new Vector3(-0.84f, -0.02f, 0.02f), yaw = 14f, scale = 0.98f, tone = new Color(0.7f, 0.66f, 0.62f) },
+                new Man { off = new Vector3(-0.28f, 0.0f, 0f), yaw = 6f, scale = 1f, tone = Color.white },                        // Daniel
+                new Man { off = new Vector3(0.28f, 0.035f, -0.03f), yaw = -4f, scale = 1.04f, tone = new Color(1.08f, 1.05f, 1.02f) }, // Vance
+                new Man { off = new Vector3(0.84f, -0.01f, 0.02f), yaw = -12f, scale = 0.99f, tone = new Color(0.45f, 0.4f, 0.37f) },
+            };
+            camPos = new Vector3(0f, 1.6f, 4.2f);
+            camTarget = new Vector3(0f, 1.63f, 0f);
+            tanHalf = 0.097f; near = 3.4f; far = 5f;
+            return Shoot(w, h);
+        }
+
+        /// <summary>Where man i's face lands in the last group shot, in pixels (for marking a face on the print).</summary>
+        public static Vector2 HeadPixel(int i, int w, int h)
+        {
+            var m = men[Mathf.Clamp(i, 0, men.Length - 1)];
+            Vector3 world = m.off + Rot(HeadC * m.scale, -m.yaw);
+            Basis(out Vector3 fwd, out Vector3 right, out Vector3 up);
+            Vector3 d = world - camPos;
+            float z = Vector3.Dot(d, fwd), aspect = w / (float)h;
+            float u = 0.5f + Vector3.Dot(d, right) / z / (2f * tanHalf * aspect);
+            float v = 0.5f + Vector3.Dot(d, up) / z / (2f * tanHalf);
+            return new Vector2(u * w, v * h);
+        }
+
+        static void Basis(out Vector3 fwd, out Vector3 right, out Vector3 up)
+        {
+            fwd = (camTarget - camPos).normalized;
+            right = Vector3.Cross(Vector3.up, fwd).normalized;
+            up = Vector3.Cross(fwd, right);
+        }
+
+        static Color[] Shoot(int w, int h)
         {
             var px = new Color[w * h];
             buttonZ = new float[ButtonY.Length];
             for (int i = 0; i < ButtonY.Length; i++) buttonZ[i] = FrontOfCoat(ButtonY[i]);
-            Vector3 fwd = (Target - CamPos).normalized;
-            Vector3 right = Vector3.Cross(Vector3.up, fwd).normalized;
-            Vector3 up = Vector3.Cross(fwd, right);
+            Basis(out Vector3 fwd, out Vector3 right, out Vector3 up);
             float aspect = w / (float)h;
             Parallel.For(0, h, y =>
             {
                 for (int x = 0; x < w; x++)
                 {
                     float u = (x + 0.5f) / w, v = (y + 0.5f) / h;
-                    Vector3 dir = (fwd + right * ((u - 0.5f) * 2f * TanHalf * aspect) + up * ((v - 0.5f) * 2f * TanHalf)).normalized;
+                    Vector3 dir = (fwd + right * ((u - 0.5f) * 2f * tanHalf * aspect) + up * ((v - 0.5f) * 2f * tanHalf)).normalized;
                     px[y * w + x] = Trace(dir, u, v);
                 }
             });
@@ -54,23 +106,24 @@ namespace Echoes.Rendering
 
         static Color Trace(Vector3 dir, float u, float v)
         {
-            float t = 1.5f;
-            for (int i = 0; i < 110 && t < 2.9f; i++)
+            float t = near;
+            for (int i = 0; i < 130 && t < far; i++)
             {
-                Vector3 p = CamPos + dir * t;
-                float d = Map(p, out int mat);
-                if (d < 0.00025f) return Shade(p, dir, mat);
+                Vector3 p = camPos + dir * t;
+                float d = Map(p, out int mat, out int man);
+                if (d < 0.00025f) return Shade(p, dir, mat, man);
                 t += d * 0.9f;
             }
             return Backdrop(u, v);
         }
 
-        static Color Shade(Vector3 p, Vector3 rd, int mat)
+        static Color Shade(Vector3 p, Vector3 rd, int mat, int man)
         {
             Vector3 n = Normal(p);
             Vector3 view = -rd;
-            Vector3 s = Turn(p);
-            Color albedo = Albedo(s, mat, out float spec, out float gloss, out bool metal);
+            Vector3 s = Local(p, man);
+            Color albedo = Albedo(s, mat, man, out float spec, out float gloss, out bool metal);
+            if (mat == Skin || mat == Lips) albedo *= men[man].tone;
 
             float ndl = Vector3.Dot(n, Key);
             float key = mat == Skin || mat == Lips ? Mathf.Clamp01((ndl + 0.3f) / 1.3f) : Mathf.Max(0f, ndl); // skin wraps the light
@@ -90,7 +143,7 @@ namespace Echoes.Rendering
             return diffuse + specCol * sp;
         }
 
-        static Color Albedo(Vector3 s, int mat, out float spec, out float gloss, out bool metal)
+        static Color Albedo(Vector3 s, int mat, int man, out float spec, out float gloss, out bool metal)
         {
             spec = 0.04f; gloss = 18f; metal = false;
             Vector3 h = s - HeadC;
@@ -101,7 +154,7 @@ namespace Echoes.Rendering
                     spec = 0.9f; gloss = 120f;
                     float side = Mathf.Sign(h.x);
                     Vector3 eyeC = new Vector3(side * 0.031f, 0.002f, 0.077f);
-                    Vector3 toCam = Turn(CamPos) - (HeadC + eyeC);
+                    Vector3 toCam = Local(camPos, man) - (HeadC + eyeC);
                     float a = Vector3.Dot((h - eyeC).normalized, toCam.normalized);
                     if (a > 0.985f) return new Color(0.004f, 0.004f, 0.004f);             // pupil
                     if (a > 0.93f) return Color.Lerp(new Color(0.03f, 0.016f, 0.008f), new Color(0.1f, 0.055f, 0.025f), (a - 0.93f) / 0.055f); // iris
@@ -159,15 +212,40 @@ namespace Echoes.Rendering
 
         // ------------------------------------------------------------------ the bust
 
-        static Vector3 Turn(Vector3 q)
+        /// <summary>Rotates about Y by `degrees` (the man's turn).</summary>
+        static Vector3 Rot(Vector3 q, float degrees)
         {
-            float cs = Mathf.Cos(Yaw), sn = Mathf.Sin(Yaw);
+            float a = degrees * Mathf.Deg2Rad, cs = Mathf.Cos(a), sn = Mathf.Sin(a);
             return new Vector3(cs * q.x - sn * q.z, q.y, sn * q.x + cs * q.z);
         }
 
-        static float Map(Vector3 q, out int mat)
+        /// <summary>A world point in man i's own space (the space the bust is modelled in).</summary>
+        static Vector3 Local(Vector3 q, int i)
         {
-            Vector3 p = Turn(q);
+            var m = men[i];
+            return Rot((q - m.off) / m.scale, m.yaw);
+        }
+
+        /// <summary>The scene: every man in the shot (only the two nearest a point are evaluated).</summary>
+        static float Map(Vector3 q, out int mat, out int man)
+        {
+            man = 0;
+            if (men.Length == 1) return Bust(Local(q, 0), out mat);
+            int a = 0;
+            for (int i = 1; i < men.Length; i++) if (Mathf.Abs(q.x - men[i].off.x) < Mathf.Abs(q.x - men[a].off.x)) a = i;
+            int b = q.x < men[a].off.x ? a - 1 : a + 1;
+            float d = Bust(Local(q, a), out mat) * men[a].scale;
+            man = a;
+            if (b >= 0 && b < men.Length)
+            {
+                float db = Bust(Local(q, b), out int mb) * men[b].scale;
+                if (db < d) { d = db; mat = mb; man = b; }
+            }
+            return d;
+        }
+
+        static float Bust(Vector3 p, out int mat)
+        {
             float d = Torso(p, out mat, true);
             float dh = Head(p, out int hm);
             if (dh < d) { d = dh; mat = hm; }
@@ -276,7 +354,7 @@ namespace Echoes.Rendering
         {
             const float e = 0.0004f;
             Vector3 a = new Vector3(1f, -1f, -1f), b = new Vector3(-1f, -1f, 1f), c = new Vector3(-1f, 1f, -1f), d = new Vector3(1f, 1f, 1f);
-            return (a * Map(p + a * e, out _) + b * Map(p + b * e, out _) + c * Map(p + c * e, out _) + d * Map(p + d * e, out _)).normalized;
+            return (a * Map(p + a * e, out _, out _) + b * Map(p + b * e, out _, out _) + c * Map(p + c * e, out _, out _) + d * Map(p + d * e, out _, out _)).normalized;
         }
 
         static float SoftShadow(Vector3 p, Vector3 l)
@@ -284,7 +362,7 @@ namespace Echoes.Rendering
             float res = 1f, t = 0.004f;
             for (int i = 0; i < 28 && t < 0.4f; i++)
             {
-                float d = Map(p + l * t, out _);
+                float d = Map(p + l * t, out _, out _);
                 if (d < 0.0002f) return 0f;
                 res = Mathf.Min(res, 10f * d / t);
                 t += Mathf.Clamp(d, 0.003f, 0.04f);
@@ -298,7 +376,7 @@ namespace Echoes.Rendering
             for (int i = 1; i <= 5; i++)
             {
                 float h = 0.006f * i;
-                occ += (h - Map(p + n * h, out _)) * w;
+                occ += (h - Map(p + n * h, out _, out _)) * w;
                 w *= 0.7f;
             }
             return Mathf.Clamp01(1f - occ * 18f);

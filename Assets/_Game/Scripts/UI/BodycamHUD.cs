@@ -215,7 +215,9 @@ namespace Echoes.UI
             if (tex != null)
             {
                 inspectImg.texture = tex;
-                ((RectTransform)inspectImg.transform).sizeDelta = new Vector2(520f * tex.width / tex.height, 520f);
+                // 520 high, unless that makes a wide print (the unit photo) wider than the screen allows.
+                float aspect = tex.width / (float)tex.height, h = Mathf.Min(520f, 1150f / aspect);
+                ((RectTransform)inspectImg.transform).sizeDelta = new Vector2(h * aspect, h);
             }
             inspectImg.color = new Color(1f, 1f, 1f, Mathf.Clamp01(alpha));
             inspectImg.enabled = alpha > 0.001f;
