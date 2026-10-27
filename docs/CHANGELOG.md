@@ -2,6 +2,14 @@
 
 Newest first. Each entry: date, agent, what changed, what the owner still needs to test, known issues.
 
+## 2026-10-28 — Claude Code (Opus 5.5), phase 8a: the new cold open
+- Committed everything up to the 30-minute plan (`4894f3a`) after the owner's approval. **The push failed**: GitHub asked for credentials this session doesn't have (the two earlier commits were never pushed either). The owner pushes from their own terminal or GitHub Desktop.
+- 8a decisions with the owner (DESIGN, "New direction"): Rachel's voicemail dismissed unheard in the ambulance, the clone's whispered call, Vance's first trace at home (8b), a shorter intro card.
+- `IntroCard`: 8 s, the date and "One night a year, for twelve hours, every crime is legal. It starts at 19:00." (EN/TR); the Voss quote is gone.
+- `ColdOpenSequence.Play`: EXHIBIT 14 shorter; Dispatch (2 lines); "VOICEMAIL · RACHEL" on the HUD with Luis "Your phone. Rachel." / Daniel "Not now, Rach."; `DialogueDirector.DroppedCall("MIA", ...)` with `DemoLines.MiaCall` (the clone as `Speaker.Mia`, one glitch, then "Dad, they're—" and static, "CALL LOST"); Daniel "Mia? Mia!", Luis "Hold on. I'm getting you there."; the tape skip now lands at 18:59:56. Removed `MiaVoicemail`, `CabBeforeVoicemail`, `CabAfterVoicemail` (F5 in the editor now plays the new call).
+- **Owner needs to test:** Play from the start (delete the PlayerPrefs key `Echoes.Subtitles` or not, either works): the card, the ride (about 45 s from fade-in to the crash), the voicemail line on the HUD, the call and its drop, the subtitles in both languages.
+- Known: after the gas station the old alleys call and school-door sequence still run until 8b–8e replace them.
+
 ## 2026-10-28 — Claude Code (Opus 5.5), new direction: a 30-minute portfolio game, README
 - Owner: turn the project into a tight, exciting ~30-minute portfolio game; decide every design choice together; a GitHub README for employers; make the repository public.
 - Decisions so far are in `docs/DESIGN.md` ("New direction"): the whole 30-minute flow, the villain (Vance), the twist (Mia was never there), the single ending with the last shot left to the player, phases 8a–8f.

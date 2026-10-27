@@ -2,49 +2,50 @@ namespace Echoes.Narrative
 {
     /// <summary>
     /// The demo's (Act 1) spoken lines: English voice text and Turkish subtitles. Sequences in phase 6b–6e use
-    /// these. Hint for the twist: the real Mia says "Dad"; the clone says "Daddy" and knows things she shouldn't.
+    /// these. The twist (30-minute game): every "Mia" call is the clone, even the first; the clone catches on syllables
+    /// (Glitch) and later says "Daddy"; the real Mia, heard only at the end, sounds half asleep and says "Dad".
     /// </summary>
     public static class DemoLines
     {
         static Line L(Speaker s, string en, string tr) => new Line(s, en, tr);
 
-        /// <summary>Cold open, in the ambulance at 18:52.</summary>
+        /// <summary>Cold open, in the ambulance at 18:52 (8a: cut to about 45 seconds).</summary>
         public static Line[] ColdOpenRadio => new[]
         {
             L(Speaker.Dispatch, "Medic Fourteen, Dispatch. Lockdown in eight minutes. All units return to station.",
                                 "Sağlık Ekibi On Dört, burası Merkez. Kapanmaya sekiz dakika. Tüm ekipler istasyona dönsün."),
-            L(Speaker.Daniel, "Dispatch, Fourteen. We're coming in on Harlow. Ten minutes.",
-                              "Merkez, burası On Dört. Harlow'dan geliyoruz. On dakika."),
-            L(Speaker.Dispatch, "Ten minutes is past the siren, Fourteen. Your call.",
-                                "On dakika sirenden sonrası demek, On Dört. Karar sizin."),
-            L(Speaker.Luis, "We'll make it, Danny. We always make it.",
-                            "Yetişiriz Danny. Hep yetişiriz."),
+            L(Speaker.Daniel, "Dispatch, Fourteen. Coming in on Harlow.",
+                              "Merkez, burası On Dört. Harlow'dan geliyoruz."),
         };
 
-        /// <summary>Mia's voicemail, played in the ambulance. This one is really her.</summary>
-        public static Line[] MiaVoicemail => new[]
+        /// <summary>
+        /// Rachel's voicemail, dismissed unheard. It says Mia is with her tonight: Daniel only plays it in the gym, at
+        /// the end (the twist's proof).
+        /// </summary>
+        public static Line[] RachelIgnored => new[]
         {
-            L(Speaker.Mia, "Dad, it's me. Mom's phone is off again.",
-                           "Baba, benim. Annemin telefonu yine kapalı."),
-            L(Speaker.Mia, "You said you'd be home before the siren. You promised.",
-                           "Sirenden önce evde olacağını söylemiştin. Söz vermiştin."),
-            L(Speaker.Mia, "I locked the doors like you showed me. Please hurry.",
-                           "Bana gösterdiğin gibi kapıları kilitledim. Lütfen acele et."),
+            L(Speaker.Luis, "Your phone. Rachel.", "Telefonun. Rachel."),
+            L(Speaker.Daniel, "Not now, Rach.", "Sonra, Rach."),
         };
 
-        /// <summary>In the cab, before the voicemail.</summary>
-        public static Line[] CabBeforeVoicemail => new[]
+        /// <summary>
+        /// "Mia" calls. It is already the clone, though nothing says so yet: the voice is nearly perfect and only catches
+        /// on a syllable once. Then the line dies.
+        /// </summary>
+        public static Line[] MiaCall => new[]
         {
-            L(Speaker.Luis, "Your phone buzzed again. Mia?", "Telefonun yine titredi. Mia mı?"),
-            L(Speaker.Daniel, "Voicemail. Hang on.", "Sesli mesaj. Bir saniye.").Then(0.6f),
+            L(Speaker.Mia, "Dad? Dad, there's someone at the door.", "Baba? Baba, kapıda biri var."),
+            L(Speaker.Mia, "They keep knocking... They're smiling, Dad. They're all smiling.",
+                           "Durmadan çalıyorlar... Gülümsüyorlar baba. Hepsi gülümsüyor.").Glitch(0.25f),
+            L(Speaker.Daniel, "Mia, listen to me. Lock your door, get in the closet, don't make a sound. I'm coming.",
+                              "Mia, beni dinle. Kapını kilitle, dolaba gir, ses çıkarma. Geliyorum."),
+            L(Speaker.Mia, "Dad, they're—", "Baba, onlar—").Glitch(1f).Then(0f),
         };
 
-        public static Line[] CabAfterVoicemail => new[]
+        public static Line[] CallDropped => new[]
         {
-            L(Speaker.Daniel, "She's alone in the house.", "Evde tek başına."),
-            L(Speaker.Luis, "Then we drop the rig and I drive you over myself. Siren or no siren.",
-                            "O zaman aracı bırakırız, seni oraya kendim götürürüm. Siren olsa da olmasa da."),
-            L(Speaker.Daniel, "Thanks, Luis.", "Sağ ol, Luis."),
+            L(Speaker.Daniel, "Mia? Mia!", "Mia? Mia!").Then(0.2f),
+            L(Speaker.Luis, "Hold on. I'm getting you there.", "Tutun. Seni oraya götürüyorum."),
         };
 
         /// <summary>19:00, the siren starts while they are still on Harlow.</summary>

@@ -71,7 +71,12 @@ namespace Echoes.Narrative
         }
 
         /// <summary>A phone call. Incoming calls ring twice before Daniel picks up.</summary>
-        public IEnumerator Call(string label, bool incoming, params Line[] lines)
+        public IEnumerator Call(string label, bool incoming, params Line[] lines) => PhoneCall(label, incoming, false, lines);
+
+        /// <summary>A call that dies mid-sentence: a burst of static and "CALL LOST" instead of a hang-up.</summary>
+        public IEnumerator DroppedCall(string label, bool incoming, params Line[] lines) => PhoneCall(label, incoming, true, lines);
+
+        IEnumerator PhoneCall(string label, bool incoming, bool dropped, Line[] lines)
         {
             var am = AudioManager.Instance;
             var hud = BodycamHUD.Instance;
@@ -88,6 +93,14 @@ namespace Echoes.Narrative
             if (hud != null) hud.ShowCall(label, false);
             yield return new WaitForSeconds(0.5f);
             foreach (var l in lines) yield return Say(l);
+            if (dropped)
+            {
+                if (am != null) am.Play2D(SoundId.RadioSquelch, 0.6f, 0.7f);
+                if (hud != null) { hud.Glitch(0.2f); hud.ShowCall(label + "  ·  CALL LOST", false); }
+                yield return new WaitForSeconds(1.4f);
+                if (hud != null) hud.HideCall();
+                yield break;
+            }
             yield return new WaitForSeconds(0.3f);
             if (am != null) am.Play2D(SoundId.PhoneHangup, 0.5f);
             yield return new WaitForSeconds(0.8f);

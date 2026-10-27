@@ -7,31 +7,20 @@ using Echoes.UI;
 namespace Echoes.Narrative
 {
     /// <summary>
-    /// The black screen before the footage: on the very first start the subtitle language is chosen, then the date,
-    /// what the Purge is, and below it a quote from the man who wrote the law. Space, Enter or a click skips ahead.
+    /// The black screen before the footage: on the very first start the subtitle language is chosen, then the date and
+    /// the one rule of the night (8 seconds; owner: shorter, the Voss quote dropped). Space, Enter or a click skips ahead.
     /// </summary>
     public static class IntroCard
     {
         const string BodyEn =
             "<size=40><b>MARCH 21, 2034</b></size>\n\n" +
-            "Since the Renewal Act of 2029, for twelve hours once a year, every crime is legal.\n" +
-            "From 19:00 to 07:00 there are no police, no fire crews, no ambulances.\n" +
-            "The government calls it the Night of Renewal. Everyone else calls it the Purge.";
+            "One night a year, for twelve hours, every crime is legal.\n" +
+            "It starts at 19:00.";
 
         const string BodyTr =
             "<size=40><b>21 MART 2034</b></size>\n\n" +
-            "2029 Yenilenme Yasası'ndan beri, yılda bir kez, on iki saat boyunca her suç yasal.\n" +
-            "19:00'dan 07:00'ye kadar polis yok, itfaiye yok, ambulans yok.\n" +
-            "Hükümet buna Yenilenme Gecesi diyor. Herkes ise Purge.";
-
-        // A fictional author of the law: the regime's own justification, as cold as it sounds.
-        const string QuoteEn =
-            "<i>\"Give a people one night to bleed, and they will repay you with three hundred and sixty-four days of order.\"</i>\n" +
-            "<size=24>— Senator Harlan Voss, author of the Renewal Act</size>";
-
-        const string QuoteTr =
-            "<i>\"Bir halka kanaması için tek bir gece verin; size üç yüz altmış dört günlük itaatle geri ödesin.\"</i>\n" +
-            "<size=24>— Senatör Harlan Voss, Yenilenme Yasası'nın mimarı</size>";
+            "Yılda bir gece, on iki saat boyunca her suç yasal.\n" +
+            "19:00'da başlıyor.";
 
         public static IEnumerator Play()
         {
@@ -53,23 +42,18 @@ namespace Echoes.Narrative
                 yield return new WaitForSeconds(0.5f);
             }
 
-            string body = GameSettings.Pick(BodyEn, BodyTr), quote = GameSettings.Pick(QuoteEn, QuoteTr);
-            // The quote is always laid out (transparent until it fades in), so the text above it never jumps.
-            float t = 0f, total = 15f;
+            string body = GameSettings.Pick(BodyEn, BodyTr);
+            float t = 0f, total = 8f;
             yield return null; // don't take the language key press as a skip
             while (t < total)
             {
                 t += Time.deltaTime;
-                float bodyA = Mathf.Clamp01(t / 1.2f) * Mathf.Clamp01((total - t) / 0.8f);
-                float quoteA = Mathf.Clamp01((t - 5f) / 1.5f) * Mathf.Clamp01((total - t) / 0.8f);
-                hud.SetCard(body + "\n\n\n<color=#FFFFFF" + Hex(quoteA * 0.85f) + ">" + quote + "</color>", bodyA);
+                hud.SetCard(body, Mathf.Clamp01(t / 1f) * Mathf.Clamp01((total - t) / 0.8f));
                 if (Skip() && t < total - 0.8f) t = total - 0.8f; // jump to the fade-out
                 yield return null;
             }
             hud.SetCard("", 0f);
         }
-
-        static string Hex(float a) => Mathf.RoundToInt(Mathf.Clamp01(a) * 255f).ToString("X2");
 
         static bool Skip()
         {

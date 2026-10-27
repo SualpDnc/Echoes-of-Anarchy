@@ -15,7 +15,8 @@ namespace Echoes.Narrative
 {
     /// <summary>
     /// Demo sequence 1. Daniel rides in the passenger seat of Medic 14 (he can look around the cab): radio traffic,
-    /// Mia's voicemail, then the tape skips to 18:59:54. The ambulance turns down Harlow Ave timed so the siren,
+    /// Rachel's voicemail dismissed unheard, "Mia" calling (the clone) and the line dying, then the tape skips to
+    /// 18:59:56 (about 45 seconds in all). The ambulance turns down Harlow Ave timed so the siren,
     /// the blackout wave and the ram truck land in order: the truck's high beams flare, it hits the front left
     /// (Luis's side), and the ambulance rolls onto its side. The footage cuts to black on the landing.
     /// Also owns the crash-site layout (final poses) that sequence 2 plays out in.
@@ -179,28 +180,32 @@ namespace Echoes.Narrative
             if (clock != null) clock.running = true;
             ambDrive.driving = true;
 
-            if (hud != null) { hud.SetFade(1f); hud.ShowCenter("EXHIBIT 14", 2.6f); }
-            yield return new WaitForSeconds(2.8f);
-            yield return Fade(1f, 0f, 1.6f);
-            yield return new WaitForSeconds(0.8f);
+            if (hud != null) { hud.SetFade(1f); hud.ShowCenter("EXHIBIT 14", 1.6f); }
+            yield return new WaitForSeconds(1.7f);
+            yield return Fade(1f, 0f, 1.2f);
+            yield return new WaitForSeconds(0.4f);
 
+            // About 45 seconds to the crash (30-minute game, 8a): the radio, Rachel's voicemail dismissed unheard (the
+            // proof of the twist, played at the end), then "Mia" whispers that they are at the door, and the line dies.
             if (d != null)
             {
                 yield return d.Radio(WithLuis(DemoLines.ColdOpenRadio));
-                yield return new WaitForSeconds(1f);
-                yield return d.Conversation(WithLuis(DemoLines.CabBeforeVoicemail));
-                yield return d.Voicemail("MIA", DemoLines.MiaVoicemail);
-                yield return new WaitForSeconds(0.8f);
-                yield return d.Conversation(WithLuis(DemoLines.CabAfterVoicemail));
+                yield return new WaitForSeconds(0.5f);
+                if (hud != null) hud.ShowCall("VOICEMAIL  ·  RACHEL", false);
+                if (AudioManager.Instance != null) AudioManager.Instance.Play2D(SoundId.VoicemailBeep, 0.35f);
+                yield return d.Conversation(WithLuis(DemoLines.RachelIgnored));
+                if (hud != null) hud.HideCall();
+                yield return new WaitForSeconds(0.6f);
+                yield return d.DroppedCall("MIA", true, DemoLines.MiaCall);
+                yield return d.Conversation(WithLuis(DemoLines.CallDropped));
             }
-            yield return new WaitForSeconds(1.5f);
 
             // The footage skips forward to the last seconds before the siren.
             yield return TapeSkip(() =>
             {
                 ambDrive.SetPath(AvenueRoute, 5.5f);
                 ambDrive.targetSpeed = 5.5f;
-                if (GameClock.Instance != null && !PurgeStarted) GameClock.Instance.JumpTo(18, 59, 54);
+                if (GameClock.Instance != null && !PurgeStarted) GameClock.Instance.JumpTo(18, 59, 56);
             });
 
             yield return DriveToImpact();

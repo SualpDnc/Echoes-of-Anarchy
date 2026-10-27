@@ -185,6 +185,10 @@ their portfolio, with a public GitHub repository and a README aimed at employers
 
 | Scene order | Home, then the underpass, then the party and the turret, then the school: the tension climbs step by step, the biggest action comes right before the finale | Owner's choice over putting the party before the underpass |
 | The turret | **Stationary**: the pickup is parked; Daniel holds off the crowd and their vehicles in waves, then escapes on foot | Owner's choice over a moving pickup driven by someone he helped |
+| Why Daniel thinks Mia is home | In the ambulance a voicemail from his ex-wife **Rachel** comes in; Daniel dismisses it unheard ("Not now, Rach"). In the gym he finally plays it: "Dan, I picked Mia up early. She's with me tonight. Call me." | Owner's choice over a custody mix-up explained by Vance |
+| The first call | "Mia" whispers: someone is at the door, knocking, "they're smiling, Dad. They're all smiling." Daniel: lock your door, get in the closet, I'm coming. The line dies in static. The voice is almost perfect; only the last syllable catches (a hint for later) | Owner's choice over a screaming call |
+| Vance's first trace | **At home**: where the Marine photo hung, an old unit photo is left, Vance's face scratched out; Daniel: "Vance..." | Owner's choice over Luis mentioning his name in the ambulance |
+| Intro card | **Shortened** to about 8 s: the date and one sentence of rules; the Voss quote is dropped | Owner's choice |
 
 ### The 30-minute flow (agreed with the owner; times approximate)
 | Time | Scene | What happens |
@@ -204,7 +208,7 @@ their portfolio, with a public GitHub repository and a README aimed at employers
 ### Phases for the 30-minute game (proposed; the owner tests each one)
 | Phase | Content | Status |
 |---|---|---|
-| 8a | Re-cut cold open (45 s, the clone's "real" call), Daniel's clarity lines, Vance set up in the dialogue | Not started |
+| 8a | Re-cut cold open (about 45 s: the radio, Rachel's voicemail dismissed, the clone's whispered call that dies), the 8-second intro card | **Done**, tested by the owner. (Daniel's clarity lines and Vance's first trace come with the scenes they belong to: 8b, 8e) |
 | 8b | Home: Daniel's house (exterior and interior generator), the search, the clue | Not started |
 | 8c | The underpass: tunnel set piece, the sound-hunting enemy | Not started |
 | 8d | The Purge party (mask, social stealth, being recognised) and the stationary pickup turret | Not started |

@@ -37,7 +37,7 @@ namespace Echoes.Narrative
             var d = DialogueDirector.Instance;
             yield return d.Radio(DemoLines.ColdOpenRadio);
             yield return new WaitForSeconds(1f);
-            yield return d.Voicemail("MIA", DemoLines.MiaVoicemail);
+            yield return d.DroppedCall("MIA", true, DemoLines.MiaCall);
             yield return new WaitForSeconds(2f);
             yield return d.Call("MIA", true, DemoLines.SchoolCall);
             running = null;
