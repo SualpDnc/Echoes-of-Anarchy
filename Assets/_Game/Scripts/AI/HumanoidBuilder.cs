@@ -62,18 +62,21 @@ namespace Echoes.AI
 
             // ---- Skinned body.
             var mb = new SkinnedBodyBuilder();
+            // Dense lofts (owner: characters as realistic as possible): round silhouettes, smooth shading at the
+            // joints and room for the garment hems to read.
             var torso = TorsoProfile(look);
-            mb.Tube(torso, 22, 0.03f, TorsoSkin);
+            mb.Tube(torso, 34, 0.018f, TorsoSkin);
             var legs = new BodyProfile[2];
             for (int side = -1; side <= 1; side += 2)
             {
                 var arm = ArmProfile(look, side * armX);
                 Func<Vector3, Skin> armSkin = ArmSkin(side);
-                mb.Tube(arm, 12, 0.03f, armSkin);
-                mb.Tube(ThumbProfile(look, side * (armX - 0.006f)), 6, 0.02f, armSkin);
+                mb.Tube(arm, 18, 0.018f, armSkin);
+                mb.Tube(ThumbProfile(look, side * (armX - 0.006f)), 8, 0.012f, armSkin);
+                Fingers(mb, look, side * armX, side, armSkin);
                 var leg = LegProfile(look, side * 0.1f);
                 legs[side < 0 ? 0 : 1] = leg;
-                mb.Tube(leg, 14, 0.035f, LegSkin(side));
+                mb.Tube(leg, 22, 0.022f, LegSkin(side));
                 Shoe(mb, look, side * 0.1f, Skin.On(side < 0 ? Bone.FootL : Bone.FootR));
             }
             OutfitDetails.Add(mb, look, torso, legs, TorsoSkin, LegSkin(-1), LegSkin(1));
@@ -200,15 +203,14 @@ namespace Echoes.AI
              .Add(1.18f, 0.038f * k * f, 0.037f * k * f, 0.038f * k * f, 2f, x)
              .Add(1.12f, 0.042f * k * f, 0.04f * k * f, 0.04f * k * f, 2f, x)
              .Add(1.04f, 0.036f * k * f, 0.034f * k * f, 0.033f * k * f, 2f, x)
-             // Hand: palm faces the thigh, so it is thin in X and wide in Z.
+             // Palm: faces the thigh, so it is thin in X and wide in Z. It ends at the knuckles; Fingers() hangs below.
              .Add(0.94f, 0.022f * f, 0.028f * f, 0.028f * f, 2f, x)
              .Add(0.91f, 0.02f * f, 0.038f * f, 0.034f * f, 2.4f, x)
              .Add(0.87f, 0.019f * f, 0.046f * f, 0.04f * f, 2.6f, x)
-             .Add(0.83f, 0.017f * f, 0.043f * f, 0.038f * f, 2.6f, x)
-             .Add(0.79f, 0.015f * f, 0.035f * f, 0.03f * f, 2.2f, x)
-             .Add(0.765f, 0.01f * f, 0.02f * f, 0.018f * f, 2f, x);
+             .Add(0.848f, 0.017f * f, 0.044f * f, 0.039f * f, 2.8f, x)
+             .Add(0.835f, 0.013f * f, 0.036f * f, 0.032f * f, 2.4f, x);
 
-            if (look.gloves) p.layers.Add(new BodyProfile.Layer(look.gloveMat, 0.76f, 0.975f, 0.003f, 0.003f));
+            if (look.gloves) p.layers.Add(new BodyProfile.Layer(look.gloveMat, 0.835f, 0.975f, 0.003f, 0.003f));
             switch (look.top)
             {
                 case TopKind.Hoodie: p.layers.Add(new BodyProfile.Layer(look.topMat, 0.95f, 1.54f, 0.013f, 0.012f, 0.045f)); break;
@@ -236,6 +238,37 @@ namespace Echoes.AI
              .Add(0.865f, 0.01f * f, 0.01f * f, 0.01f * f, 2f, x, 0.05f)
              .Add(0.85f, 0.006f * f, 0.006f * f, 0.006f * f, 2f, x, 0.052f);
             return p;
+        }
+
+        /// <summary>
+        /// Four fingers from the knuckles down, relaxed: each tapers, the tips curl in toward the palm (which faces
+        /// the thigh) and the hand fans out slightly. They start inside the palm, so the joint never shows a gap.
+        /// </summary>
+        static void Fingers(SkinnedBodyBuilder mb, CharacterLook look, float x, int side, Func<Vector3, Skin> skin)
+        {
+            float f = look.feminine ? 0.88f : 1f;
+            var mat = look.gloves ? look.gloveMat : look.skin;
+            float[] z = { 0.027f, 0.009f, -0.009f, -0.025f };       // index (thumb side, +Z) to little finger
+            float[] len = { 0.074f, 0.082f, 0.077f, 0.062f };
+            float[] r = { 0.0088f, 0.0092f, 0.0086f, 0.0074f };
+            for (int i = 0; i < 4; i++)
+            {
+                var p = new BodyProfile { baseMat = mat };
+                const float top = 0.852f;
+                float l = len[i] * f, rr = r[i] * f;
+                float Curl(float u) => u * u * 0.016f * f;
+                float Fan(float u) => z[i] * f * (1f + 0.18f * u);
+                for (int k = 0; k <= 5; k++)
+                {
+                    float u = k / 5f;
+                    // Knuckle joints show as a slight swelling at a third and two thirds of the length.
+                    float knuckle = 1f + 0.06f * Mathf.Exp(-Mathf.Pow((u - 0.38f) / 0.08f, 2f)) + 0.05f * Mathf.Exp(-Mathf.Pow((u - 0.7f) / 0.07f, 2f));
+                    float w = rr * (1f - 0.2f * u) * knuckle;
+                    p.Add(top - u * l, w * 0.95f, w, w, 2f, x - side * Curl(u), Fan(u));
+                }
+                p.Add(top - l - rr * 0.55f, rr * 0.4f, rr * 0.45f, rr * 0.4f, 2f, x - side * Curl(1.08f), Fan(1.08f)); // round fingertip
+                mb.Tube(p, 8, 0.011f, skin);
+            }
         }
 
         static BodyProfile LegProfile(CharacterLook look, float x)

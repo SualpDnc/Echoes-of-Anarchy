@@ -356,7 +356,7 @@ namespace Echoes.Audio
             var buf = new float[Samples(3f)];
             var crackHp = new OnePoleHP(1500f);
             var bodyLp = Biquad.LowPass(rifle ? 1800f : 1100f);
-            float boomF = Range(r, 50f, 70f);
+            var boomLp = Biquad.LowPass(Range(r, 90f, 130f)); // rumble as filtered noise: a tuned sine read as a drum
             float bodyDecay = rifle ? 0.07f : 0.05f;
             var shot = new float[Samples(0.4f)];
             for (int i = 0; i < shot.Length; i++)
@@ -364,7 +364,7 @@ namespace Echoes.Audio
                 float t = (float)i / Rate;
                 float crack = crackHp.Process(White(r)) * Env(t, 0.0002f, rifle ? 0.005f : 0.003f) * (rifle ? 1.6f : 1.1f);
                 float body = bodyLp.Process(White(r)) * Env(t, 0.0008f, bodyDecay) * 1.2f;
-                float boom = Sin(TwoPi * boomF * t) * Env(t, 0.002f, 0.12f) * 1.1f;
+                float boom = boomLp.Process(White(r)) * Env(t, 0.002f, 0.12f) * 9f;
                 shot[i] = crack + body + boom;
             }
             Mix(buf, shot, Samples(0.02f), 1f);

@@ -59,7 +59,7 @@ Bodies vary in height, bulk, belly and male/female proportions.
 | 4 | Combat + AI: pistol (own synthesized gunshot), bottle throw, damage, ragdoll, NPC FSM (patrol/suspicious/search/attack/flee/surrender), sight + hearing perception on the NavMesh | **Done**, committed by the owner (the melee animation and jitter fix were not explicitly confirmed) |
 | 5 | Characters: upgrade the basic segmented humanoid from phase 4 (better body shapes, clothing detail, IK feet, more masks such as pig and angel, smoother animation) | **Done**, tested by the owner (liked it) |
 | 6 | Narrative: dialogue + EN/TR subtitles, Ledger, phone calls, demo sequences 1–5, GameClock-driven 19:00 siren | **In progress**, split into steps 6a–6e (below) |
-| 7 | Polish: main menu (VHS style), tape transitions, settings, shader warm-up (avoids the cyan placeholder flash on first play), performance, build | |
+| 7 | Polish (to be re-planned for the 30-minute game): main menu (VHS style), tape transitions, settings, shader warm-up (avoids the cyan placeholder flash on first play), performance, build | A first shareable build exists (`Tools > Echoes > Build Demo (Windows)`, owner request before phase 7); the rest is not started |
 
 The owner tests every phase in Play mode before the next one starts.
 
@@ -70,7 +70,7 @@ The owner tests every phase in Play mode before the next one starts.
 | 6b | Sequences 1–2: ambulance cold open, voicemail, siren, truck crash; Luis wounded (treat or leave → Ledger), movement/med-kit tutorial, first Smilers. Needs ambulance, truck, crash site | **Done**, tested by the owner and committed (with the revision, intro card and reload polish) |
 | 6c | Sequence 3: gas station (hidden civilian, three looters; sneak, distract or fight; spare or execute). Needs the gas station | **Done**, tested by the owner and committed (with blood, damage numbers and 6d) |
 | 6d | Sequence 4: alleys, the cloned "Daddy, come to the school" call, chase, a Smiler waves at the camera | **Done**, tested by the owner (several rounds) and committed |
-| 6e | Sequence 5: school door, Marine photo, "SMILE, DANNY. YOU'RE LIVE.", footage cuts, detective note, TO BE CONTINUED | |
+| 6e | Sequence 5: school door, Marine photo, "SMILE, DANNY. YOU'RE LIVE.", footage cuts, detective note, TO BE CONTINUED | **Code done**, in the first build; after it the owner asked for fixes (checkpoints, cab camera, gunshot, the clerk, melee, characters: see the last section), awaiting their test (`startAt = School` on the "Demo" object to start in the school yard) |
 
 Phases 1–7 cover the 15-minute demo (Act 1). Acts 2–4 of the full game are not planned into phases yet; they will be planned after the demo.
 
@@ -134,3 +134,81 @@ Phases 1–7 cover the 15-minute demo (Act 1). Acts 2–4 of the full game are n
 | The firework (was: the wave) | As soon as Daniel is through the shutter, a Smiler stands in the floodlit yard, in line with the back alley, a firework tube at his feet. When Daniel sees him: a stinger; he kneels, lights it, and runs into the school (the door bangs). The shell bursts into the Smilers' grin in cyan stars (face ring, eyes, smile) about 22 m up and lights the yard; Daniel: "A grin... They're putting on a show." Owner replaced the wave with this (he used to start only after Daniel had reached the court; fixed too) | The demo plan's "a Smiler waves at the camera", in a louder form: the stream's calling card |
 | The end of 6d | Through the yard gate. The school door scene is 6e | Each step testable on its own |
 
+## Sequence 5: the school door (phase 6e, proposed by the agent; the owner can still change it)
+| Topic | Decision | Why |
+|---|---|---|
+| The door | The school's front doors on the yard (x −86, z −6): steel double doors in a stone surround, chained and padlocked. Sprayed across them in red: "SMILE, DANNY." and "YOU'RE LIVE."; between the lines, Daniel's Marine boot-camp photo, taped on. The board above reads "KESSLER STREET MIDDLE SCHOOL" (Mia's school, on Kessler). Built at runtime (`SchoolDoorBuilder`) because the paint and the photo are runtime textures (`PixelFont`, `ProcTextures.MarinePhoto`) | The demo plan's cliffhanger image, readable without UI |
+| The camera | Three metres out, a phone on a tripod films the door: red REC dot, its torch on the doors (Daniel's shadow falls on them when he steps in). "Mia" speaks from it when Daniel comes within 9 m: "Daddy? I'm inside. Look at the door, Daddy." | "You're live" made literal: they are streaming from it; the clone's voice comes out of a phone |
+| Looking | F on the door ("Look at the photo"): Daniel can only look; the photo is held up to the lens (`BodycamHUD.ShowInspect`). Daniel: "That's me. Parris Island, twenty-sixteen. This was on Mia's wall. In her room." | They have been in his house: the stakes for Acts 2–4 |
+| The stream | The Smilers' stream breaks into the bodycam picture (`StreamOverlay`: a red LIVE badge, "SMILE.TV/danny", a climbing viewer count from ~38 000, chat on the right). The chat knows what the bodycam saw (executed or spared the kid, saved Luis). From the phone: "Smile, Danny. You're live. Forty thousand people want to see what a Marine does to get his little girl back." If Luis was left: "They already loved the part where you left Luis." If Luis has the radio: "you're on my phone, on every phone". Daniel: "Where is she?!" — "Round two starts now." The chat is in-world text, so it stays English | Pays off the Luis choice (6e was planned to read `StoryState.LuisAlive`) and the Ledger; sets up Act 2 "Broadcast" |
+| The cut | The floodlights die, a last glitched "Daddy—", a tape tear: black. The world goes silent (`AudioListener.pause`). Over black: Detective Hale's note (EXHIBIT 14, the recording's end time, "three hours are missing… I want to know who, and what Reyes did in the gap", 22 March 2034 07:58) with his voice ("Three hours. Gone. Where were you, Mister Reyes?"), then TO BE CONTINUED, then "ECHOES OF ANARCHY — end of the demo" | The frame story (Hale reviewing the footage) and the demo's end |
+
+
+## Owner feedback after the first build (decided with the owner)
+| Topic | Decision | Why |
+|---|---|---|
+| Checkpoints | A death restarts at the last checkpoint instead of the ambulance ride (`Core/Checkpoint`, saved by `DemoDirector`): **the crash** (the crash site plays again from waking up), **heading down Harlow** (Luis treated or dead, Daniel past z −50), **through the gas station's back gate** (before the call and the chase), **in the school yard**. The Ledger, `StoryState`, the in-game time and Daniel's kit (health, med kits, rounds, bottles) go back to what they were at the checkpoint; at least 60 health so a restart is never a death trap. Later restarts put the night back as it was: the Purge already under way (no siren, lamps out, some on emergency power), Luis treated or dead by the wreck (the grin painted if the Smilers came back for him), the looters gone, the clerk's body if Daniel killed her | Owner: dying sent him back to the start |
+| The cab | Daniel's camera in the passenger seat sits about a hand below Luis's eyes, not at his chest | Owner: "like a dwarf" next to the driver |
+| Gunshots | No tuned low tone in any gunshot (a falling low sine is how a kick drum is made). The pistol is a pressure spike plus gas noise, clipped by the body-camera mic, the slide's clack, the street's reflections and a long dull tail | Owner: the shot sounded like a drum |
+| The dead are silent | A line said by someone standing in the world stops when they die, and a conversation ends once anyone in it is dead (`DialogueDirector`) | Owner: the clerk kept talking after he killed her |
+| Melee | Strikes do half the damage they did (20, the punch 12; head ×3.5): a blow staggers, it rarely ends a fight | Owner request |
+| Characters | Every bare or half-covered face is the detailed one (iris and lids, lash line, lid crease, wet rim, nostrils, two lips, shaped ears; stubble on men only; a softer jaw, arched brows and longer lashes on women; eye colour from skin tone); bodies are lofted about twice as densely and the hands have four fingers. Still made only of code: no textures beyond the fabric detail maps | Owner: "all characters as realistic as you can make them" |
+| Luis's face | Luis gets extra bone structure (`CharacterLook.definition` = 1, `MaskFactory.Rugged`: cheekbones and hollows, a jaw ridge, heavier brow, deeper sockets, a narrow nose with a bump, deep nose-to-mouth folds, forehead lines) on a denser skull | Owner: sharper, more realistic lines |
+| Stay with Luis | After the crash Daniel can't go more than 11 m from Luis until Luis has finished talking (directions and the choice); Daniel: "Luis first. I'm not leaving him like this." | Owner: you could walk off before he finished |
+| The gas-station fight | Harder, in waves, but only once shooting starts (sneaking past still works): wave 2 (pistol, bat, pistol) comes over the barricade on Harlow south of the lot 7 s after the fight starts; wave 3 (two pistols, a bat) flanks from the store's north corridor and the back gate once wave 2 is down to one. Reinforcements are braver (courage 0.75) and spawn only out of Daniel's sight | Owner request |
+| Ammo | Daniel wakes at the crash site with a loaded gun and five spare magazines (7 + 35) | For the harder station fight |
+| The photo | The Marine photo is a rendered 3D portrait (`Rendering/MarinePortrait`, a small ray marcher over a signed-distance bust, studio-lit), then aged as a print | Owner: the drawn photo didn't look real |
+
+## New direction: a 30-minute portfolio game (decided with the owner, 2026-10-28)
+The owner changed the goal: instead of a ~60-minute game, a **tight, genuinely exciting and fun ~30-minute game** for
+their portfolio, with a public GitHub repository and a README aimed at employers. Every design decision for it is taken
+**together with the owner, one at a time** (ask before deciding). Decided so far:
+
+| Topic | Decision | Why |
+|---|---|---|
+| Structure | A **new, tight flow built from scratch** for 30 minutes. Existing pieces (the ambulance, the crash, the gas station, the alleys chase, the school, the Smilers' stream) can be kept, changed or dropped, decided scene by scene with the owner | Owner's choice over "Act 1 + school + finale" and "Act 1 + school + home defence" |
+| Ending | **One strong ending** for everyone. Choices (the Ledger, StoryState) still change lines, the stream chat and details, not the ending | Owner's choice |
+| Clarity | **Daniel says what is happening** at the key moments, in one short line (the clone: "That wasn't Mia... they copied her voice"; the stream: "They've got my camera. I'm the show") | A friend who played the first build didn't understand the stream ("what is this?") |
+| Repository | Commit and push after the owner tests this round; then the owner makes the repository public (Settings › General › Danger Zone › Change visibility; there is no `gh` CLI on the dev machine). `README.md` (English) is the portfolio page: the pitch, the zero-imported-assets pipeline, the systems, and an honest "How it was made" (the owner designed and directed; AI coding agents implemented under that direction) | Owner request |
+| Opening | A **short ambulance ride** (about 45 s instead of 70) with **a real call from Mia**, whispering that someone is at the door, smiling; the line cuts; 19:00, the grid drops, the truck hits. The goal and the threat are personal within the first minute | Owner's choice over a flash-forward to the school door |
+| Tone and spine | A **grounded survival journey** (the current tone): serious and dark, big set pieces between the walking. The stream stays in the background and comes out toward the end (Daniel says what it is when it does) | Owner's choice over a "game show" structure and over Luis as a radio companion |
+| Ending | **A twist: Mia was never there.** The Smilers led Daniel across the city with a cloned voice to make content of him; the finale is a confrontation in which Daniel turns his own camera on them | Owner's choice over a studio boss fight and over an escape carrying Mia |
+| The villain | **Someone Daniel knows** leads the Smilers: the twist is personal ("why me?" has an answer) | Owner's choice over a masked host and over a faceless crowd |
+| Who | **Daniel's old Marine comrade** (working name: Sgt. Eli Vance). Something happened over there that is the root of Daniel's fear of becoming violent again; Vance wants everyone to see who Daniel really is. The Marine photo on the school door is his clue | Owner's choice over the father of a patient Daniel lost and over Luis |
+| Where Mia is | **Safe at her mother's.** Even the opening call was the clone: the player was fooled from the first minute. At the end Daniel calls the real Mia, who answers half asleep ("Dad? What time is it?") | Owner's choice |
+| The last shot | The player holds the gun on Vance and **decides** (fire or not); the ending plays out the same either way, but the lines around it and Hale's note change ("...and Reyes pulled the trigger" / "...didn't") | Owner's choice over a fixed "Daniel doesn't kill" and over a staged killing |
+| Scenes kept | **The crash site with Luis's choice**, and **the gas station** (stealth or the waves). The alleys chase and the school-door scene are not kept as they are (their parts may be reused) | Owner's choice |
+| The past | **Daniel reported Vance** for a war crime over there; Vance went to military prison. Tonight Vance wants to prove on camera that Daniel is no different: the whole night is built to push Daniel into violence, and the stream keeps the tally (the Ledger) | Owner's choice over "Daniel left Vance wounded" and "Daniel killed men who surrendered" |
+| The lure | After the gas station the clone ("Dad, I'm hiding in the closet, come home!") draws Daniel to **his own house**: a tense search in the dark | Owner's choice over the school and the hospital |
+| Middle scenes | **A dark underpass** (only the flashlight; something hunts by sound) and **a Purge party** crossed in a mask (social stealth). Owner's addition: just as Daniel thinks he is through, he is recognised, and he has to get on **a machine gun mounted on a pickup** and mow them down, **infinite ammo** | Owner's choice |
+| Finale | **The school gym**, turned into the Smilers' broadcast set. The school yard and the door (photo, the stream breaking into the bodycam) lead into it | Owner's choice over a recruiting office and a TV tower roof |
+
+| Scene order | Home, then the underpass, then the party and the turret, then the school: the tension climbs step by step, the biggest action comes right before the finale | Owner's choice over putting the party before the underpass |
+| The turret | **Stationary**: the pickup is parked; Daniel holds off the crowd and their vehicles in waves, then escapes on foot | Owner's choice over a moving pickup driven by someone he helped |
+
+### The 30-minute flow (agreed with the owner; times approximate)
+| Time | Scene | What happens |
+|---|---|---|
+| 0:00 | Cold open | A short intro card; the ambulance with Luis; "Mia" calls, whispering that someone is at the door, smiling (it is already the clone); the line cuts; 19:00, the grid drops; the truck hits |
+| 1:00 | Crash site | Waking up, the med kits, Luis's choice (treat him or leave him); Daniel can't leave until Luis has finished talking |
+| 4:30 | Gas station | Stealth, or the fight in waves; the kid who surrenders; the clerk |
+| 10:00 | The lure | The clone: "Dad, I'm hiding in the closet, come home!" |
+| 10:30 | Home | Daniel's dark house: the door open, Mia's room empty, the Marine photo torn off the wall, a note: "SCHOOL. COME ALONE. SMILE." |
+| 15:00 | The underpass | No power: only the flashlight; something hunts by sound |
+| 19:00 | The Purge party | A street closed off for a masked party; Daniel crosses it in a mask without being noticed |
+| 22:30 | The turret | Recognised at the last moment: a machine gun on a parked pickup, infinite ammo, waves of the crowd and their vehicles; then away on foot |
+| 25:00 | The school | The yard and the door: the photo, the stream breaks into his camera (Daniel: "They've got my camera. I'm the show.") |
+| 26:30 | The gym | The Smilers' set: Vance, his mask comes off, the past (Daniel reported him); "Mia was never here"; Daniel calls the real Mia: "Dad? What time is it?"; Vance: "Do it, Danny. Everyone's watching." The player fires or doesn't |
+| 29:30 | The end | The tape cuts; Hale's note, which changes with the shot |
+
+### Phases for the 30-minute game (proposed; the owner tests each one)
+| Phase | Content | Status |
+|---|---|---|
+| 8a | Re-cut cold open (45 s, the clone's "real" call), Daniel's clarity lines, Vance set up in the dialogue | Not started |
+| 8b | Home: Daniel's house (exterior and interior generator), the search, the clue | Not started |
+| 8c | The underpass: tunnel set piece, the sound-hunting enemy | Not started |
+| 8d | The Purge party (mask, social stealth, being recognised) and the stationary pickup turret | Not started |
+| 8e | The school and the gym finale: Vance, the reveal, the call to Mia, the shot, Hale's note | Not started |
+| 8f | Polish: menu, performance, the build, README screenshots, making the repository public | Not started |
+
+The 60-minute plan above (Acts 2–4, home defence) is replaced by this flow; keep it only as background.

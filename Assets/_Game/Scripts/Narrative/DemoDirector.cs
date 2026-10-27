@@ -1,5 +1,7 @@
 using System.Collections;
 using UnityEngine;
+using Echoes.Combat;
+using Echoes.Core;
 using Echoes.Rendering;
 using Echoes.UI;
 using Echoes.World;
@@ -8,16 +10,17 @@ namespace Echoes.Narrative
 {
     /// <summary>
     /// Runs the demo (Act 1): sequence 1 (cold open in the ambulance), then sequence 2 (the crash site); sequences 3
-    /// (the gas station) and 4 (the alleys) are set up from the start and play out when Daniel gets there. `startAt`
-    /// can begin at the crash site, the gas station or the alleys (for testing), or skip the story entirely; F4 skips
-    /// the ride while it plays.
+    /// (the gas station), 4 (the alleys) and 5 (the school door) are set up from the start and play out when Daniel gets
+    /// there. `startAt` can begin at the crash site, the gas station, the alleys or the school yard (for testing), or
+    /// skip the story entirely; F4 skips the ride while it plays. It also keeps the checkpoints: a death restarts at the
+    /// last one (Core/Checkpoint) instead of at the ambulance ride.
     /// </summary>
     [RequireComponent(typeof(ColdOpenSequence), typeof(CrashSiteSequence), typeof(GasStationSequence))]
-    [RequireComponent(typeof(AlleySequence))]
+    [RequireComponent(typeof(AlleySequence), typeof(SchoolSequence))] // RequireComponent takes at most three types
     public class DemoDirector : MonoBehaviour
     {
         // New entries go at the end: the field is serialized as an int.
-        public enum StartAt { ColdOpen, CrashSite, GasStation, Sandbox, Alleys }
+        public enum StartAt { ColdOpen, CrashSite, GasStation, Sandbox, Alleys, School }
 
         public static DemoDirector Instance { get; private set; }
 
@@ -29,6 +32,7 @@ namespace Echoes.Narrative
         CrashSiteSequence crashSite;
         GasStationSequence gasStation;
         AlleySequence alleys;
+        SchoolSequence school;
         Coroutine running;
 
         void Awake()
@@ -39,6 +43,7 @@ namespace Echoes.Narrative
             crashSite = GetComponent<CrashSiteSequence>();
             gasStation = GetComponent<GasStationSequence>();
             alleys = GetComponent<AlleySequence>();
+            school = GetComponent<SchoolSequence>();
         }
 
         void OnDestroy()
@@ -56,8 +61,19 @@ namespace Echoes.Narrative
             StartCoroutine(gasStation.Play());
             alleys.Setup();
             StartCoroutine(alleys.Play(gasStation));
-            if (startAt == StartAt.GasStation) { StartFree(new Vector3(-2f, 0.05f, -45f), 180f, "Get home to Mia - south on Harlow"); yield break; }
-            if (startAt == StartAt.Alleys) { StartFree(new Vector3(-43.5f, DistrictGenerator.Curb + 0.05f, -74.5f), 270f, "Get home to Mia"); yield break; }
+            school.Setup();
+            StartCoroutine(school.Play(alleys));
+            StartCoroutine(SaveCheckpoints());
+
+            // Back from a death: the last checkpoint, as things stood then.
+            if (Checkpoint.TakeRestore(out var stage))
+            {
+                yield return Restore(stage);
+                yield break;
+            }
+            if (startAt == StartAt.GasStation) { StartFree(CheckpointStage.GasStation); Save(CheckpointStage.GasStation); yield break; }
+            if (startAt == StartAt.Alleys) { StartFree(CheckpointStage.Alleys); Save(CheckpointStage.Alleys); yield break; }
+            if (startAt == StartAt.School) { StartFree(CheckpointStage.School); Save(CheckpointStage.School); yield break; }
             if (startAt == StartAt.CrashSite) coldOpen.Skip();
             running = StartCoroutine(Flow(startAt == StartAt.ColdOpen));
         }
@@ -69,9 +85,93 @@ namespace Echoes.Narrative
             running = null;
         }
 
-        /// <summary>Testing: the crash has happened, Luis sits by the wreck, Daniel stands somewhere later on the route.</summary>
-        void StartFree(Vector3 pos, float yaw, string objective)
+        // ------------------------------------------------------------------ checkpoints
+
+        /// <summary>
+        /// Saves as the story moves on: the crash; Luis's part over and Daniel heading down Harlow toward the station;
+        /// through the station's back gate (before the call and the chase); into the school yard.
+        /// </summary>
+        IEnumerator SaveCheckpoints()
         {
+            var p = GameObject.FindGameObjectWithTag("Player");
+            if (p == null) yield break;
+            var health = p.GetComponent<Health>();
+            while (Checkpoint.Stage < CheckpointStage.School)
+            {
+                if (health == null || !health.IsDead)
+                {
+                    if (coldOpen.Crashed) Save(CheckpointStage.CrashSite);
+                    if (crashSite.Resolved && !crashSite.Busy && p.transform.position.z < -50f) Save(CheckpointStage.GasStation);
+                    if (gasStation.Done) Save(CheckpointStage.Alleys);
+                    if (alleys.Done || school.Reached) Save(CheckpointStage.School);
+                }
+                yield return null;
+            }
+        }
+
+        void Save(CheckpointStage stage)
+        {
+            if (stage <= Checkpoint.Stage) return;
+            var p = GameObject.FindGameObjectWithTag("Player");
+            if (p == null) return;
+            var kit = new Checkpoint.Kit();
+            if (p.TryGetComponent(out Health h)) kit.health = h.Current;
+            if (p.TryGetComponent(out PlayerHealth ph)) kit.medKits = ph.medKits;
+            if (p.TryGetComponent(out WeaponPistol w)) { kit.ammoInMag = w.ammoInMag; kit.reserve = w.reserve; }
+            if (p.TryGetComponent(out ThrowController t)) kit.bottles = t.bottles;
+            Checkpoint.Save(stage, kit);
+        }
+
+        /// <summary>
+        /// Restarts at a checkpoint. The crash site plays again from Daniel waking up. Later stages put the night back
+        /// as it was (the Purge under way, Luis treated or dead, the looters gone) and give Daniel his kit back, with at
+        /// least 60 health so a restart is never a death trap.
+        /// </summary>
+        IEnumerator Restore(CheckpointStage stage)
+        {
+            if (stage == CheckpointStage.CrashSite)
+            {
+                coldOpen.Skip();
+                running = StartCoroutine(Flow(false));
+                yield break;
+            }
+            if (PurgeClock.Instance != null) PurgeClock.Instance.AlreadyStarted(); // before the skip, so the clock isn't rewound to 18:59
+            StartFree(stage);
+            var clock = GameClock.Instance;
+            var t = Checkpoint.SavedTime;
+            if (clock != null && t != System.DateTime.MinValue) clock.JumpTo(t.Hour, t.Minute, t.Second);
+            crashSite.RestoreAfterCheckpoint();
+            if (stage >= CheckpointStage.Alleys) gasStation.RestoreAfterCheckpoint();
+
+            var p = GameObject.FindGameObjectWithTag("Player");
+            if (p != null)
+            {
+                var kit = Checkpoint.SavedKit;
+                if (p.TryGetComponent(out Health h)) h.SetHealth(Mathf.Max(kit.health, 60f));
+                if (p.TryGetComponent(out PlayerHealth ph)) ph.medKits = kit.medKits;
+                if (p.TryGetComponent(out WeaponPistol w)) { w.ammoInMag = kit.ammoInMag; w.reserve = kit.reserve; }
+                if (p.TryGetComponent(out ThrowController tc)) tc.bottles = kit.bottles;
+            }
+            // The tape picks up again: black while the lamps settle, then a fade in.
+            var hud = BodycamHUD.Instance;
+            if (hud != null) hud.SetFade(1f);
+            yield return new WaitForSeconds(1.6f);
+            if (hud != null) hud.ShowHint(GameSettings.Pick("Checkpoint", "Kontrol noktası"), 2.5f);
+            yield return ColdOpenSequence.Fade(1f, 0f, 1.2f);
+        }
+
+        /// <summary>Starts at a stage without its lead-up (checkpoint restarts and test starts): the crash has happened, Luis sits by the wreck.</summary>
+        void StartFree(CheckpointStage stage)
+        {
+            Vector3 pos;
+            float yaw;
+            string objective;
+            switch (stage)
+            {
+                case CheckpointStage.Alleys: pos = new Vector3(-43.5f, DistrictGenerator.Curb + 0.05f, -74.5f); yaw = 270f; objective = "Get home to Mia"; break;
+                case CheckpointStage.School: pos = new Vector3(-82f, DistrictGenerator.Curb + 0.05f, -20f); yaw = 0f; objective = "Find Mia - the school"; break;
+                default: pos = new Vector3(-2f, 0.05f, -45f); yaw = 180f; objective = "Get home to Mia - south on Harlow"; break;
+            }
             coldOpen.Skip();
             var p = GameObject.FindGameObjectWithTag("Player");
             if (p == null) return;

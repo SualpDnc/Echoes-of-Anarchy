@@ -8,6 +8,7 @@ namespace Echoes.Audio
 #if UNITY_EDITOR || DEVELOPMENT_BUILD
         void Update()
         {
+            if (!Debug.isDebugBuild) return; // developer keys: editor and development builds only
             var kb = UnityEngine.InputSystem.Keyboard.current;
             if (kb == null) return;
             if (kb.f9Key.wasPressedThisFrame && PurgeSiren.Instance != null) PurgeSiren.Instance.Sound();

@@ -155,6 +155,7 @@ namespace Echoes.Audio
             v.src.minDistance = minDistance;
             v.src.maxDistance = maxDistance;
             v.src.loop = false;
+            v.src.ignoreListenerPause = false;
 
             float dist = listener != null ? Vector3.Distance(listener.transform.position, pos) : 0f;
             float cutoff = Mathf.Lerp(22000f, 1800f, Mathf.Clamp01(dist / 250f));
@@ -174,6 +175,7 @@ namespace Echoes.Audio
             if (clip == null) return;
             var v = GetVoice();
             v.src.transform.localPosition = Vector3.zero;
+            v.src.ignoreListenerPause = AudioListener.pause; // a 2D sound started while the world is paused (end cards) still plays
             v.src.spatialBlend = 0f;
             v.src.clip = clip;
             v.src.volume = volume;

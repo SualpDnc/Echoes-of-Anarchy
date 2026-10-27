@@ -8,45 +8,72 @@ namespace Echoes.Audio
     public static partial class SynthLibrary
     {
         /// <summary>
-        /// A 9 mm fired in a street canyon at arm's length: supersonic crack, muzzle blast, slide clack,
-        /// early facade reflections at 20–60 ms, then a short street tail. Saturated so it reads as LOUD.
+        /// A 9 mm fired at arm's length, heard by the chest camera in a street canyon. The owner heard the old recipe
+        /// as a drum: it had a tuned, falling low sine (that is how a kick drum is made). A real shot has no pitch:
+        /// a muzzle blast that is a single pressure spike (a Friedlander N-wave) plus turbulent gas noise, clipped
+        /// flat by the small mic; the slide's metallic clack a few ms later and its return; the ground bounce, the
+        /// facades answering at 15–90 ms, a slap off the far side of the street, and a long, dull rolling tail.
         /// </summary>
         static float[] GunNear(Random r)
         {
-            var buf = new float[Samples(1.8f)];
-            var crackHp = new OnePoleHP(1200f);
-            var bodyLp = Biquad.LowPass(Range(r, 2200f, 2800f));
-            var blastLp = Biquad.LowPass(500f);
-            float boomF = Range(r, 75f, 95f);
-            var shot = new float[Samples(0.35f)];
+            var buf = new float[Samples(2.6f)];
+            var shot = new float[Samples(0.25f)];
+            float td = Range(r, 0.00045f, 0.0007f);                 // positive phase of the blast wave
+            var gasBp = Biquad.BandPass(Range(r, 900f, 1400f), 0.55f);
+            var gasHp = Biquad.HighPass(Range(r, 2500f, 3200f));
+            var thumpLp = Biquad.LowPass(Range(r, 150f, 210f));     // chest-felt weight, as noise: no pitch
+            var clackHp = Biquad.HighPass(1800f);
+            float[] modes = { Range(r, 2900f, 3300f), Range(r, 4700f, 5200f), Range(r, 6900f, 7600f), Range(r, 9800f, 10600f) };
+            float back = Range(r, 0.005f, 0.008f), home = back + Range(r, 0.026f, 0.034f);
             for (int i = 0; i < shot.Length; i++)
             {
                 float t = (float)i / Rate;
-                float crack = crackHp.Process(White(r)) * Env(t, 0.0001f, 0.0025f) * 2.4f;
-                float body = bodyLp.Process(White(r)) * Env(t, 0.0003f, 0.045f) * 1.6f;
-                float blast = blastLp.Process(White(r)) * Env(t, 0.001f, 0.09f) * 2.2f;
-                float boom = Sin(TwoPi * boomF * t * (1f - t * 0.8f)) * Env(t, 0.0015f, 0.07f) * 1.4f;
-                float clack = Sin(TwoPi * 3100f * (t - 0.012f)) * Env(t - 0.012f, 0.0003f, 0.008f) * 0.35f;
-                shot[i] = (float)Math.Tanh((crack + body + blast + boom + clack) * 1.3f);
+                float x = t / td;
+                float blast = (1f - x) * Exp(-1.4f * x) * 4f;
+                float gas = gasBp.Process(White(r)) * Env(t, 0.0002f, 0.016f) * 3.2f + gasHp.Process(White(r)) * Env(t, 0.0001f, 0.005f) * 2.2f;
+                float thump = thumpLp.Process(White(r)) * Env(t, 0.0006f, 0.028f) * 9f;
+                // The mic and preamp of a body camera clip hard on a gunshot: the crack comes out flat and crunchy.
+                float v = (float)Math.Tanh((blast + gas + thump) * 2.4f) * 0.92f;
+                float clack = clackHp.Process(White(r)) * (Env(t - back, 0.0001f, 0.0018f) * 0.45f + Env(t - home, 0.0001f, 0.0014f) * 0.3f);
+                for (int m = 0; m < modes.Length; m++)
+                {
+                    float decay = 0.012f / (1f + m * 0.6f);
+                    clack += Sin(TwoPi * modes[m] * (t - back)) * Env(t - back, 0.0002f, decay) * 0.2f
+                           + Sin(TwoPi * modes[m] * 1.06f * (t - home)) * Env(t - home, 0.0002f, decay * 0.8f) * 0.13f;
+                }
+                shot[i] = v + clack;
             }
             Mix(buf, shot, 0, 1f);
-            // Early reflections off nearby walls and cars.
-            for (int k = 0; k < 4; k++)
-            {
-                var e = (float[])shot.Clone();
-                var lp = Biquad.LowPass(3000f - k * 500f);
-                for (int i = 0; i < e.Length; i++) e[i] = lp.Process(e[i]);
-                Mix(buf, e, Samples(Range(r, 0.02f, 0.06f) + k * 0.03f), Range(r, 0.18f, 0.3f));
-            }
-            // Distant slap from the far side of the street.
-            var slap = (float[])shot.Clone();
-            var slapLp = Biquad.LowPass(1200f);
-            for (int i = 0; i < slap.Length; i++) slap[i] = slapLp.Process(slap[i]);
-            Mix(buf, slap, Samples(Range(r, 0.18f, 0.32f)), 0.18f);
-            ApplyReverb(buf, 0.75f, 0.5f, 0.3f);
+
+            // The street answers: the ground bounce, then the facades (each later one duller), then the far side.
+            Echo(buf, shot, Range(r, 0.005f, 0.008f), 0.45f, 7000f);
+            int walls = r.Next(4, 7);
+            for (int k = 0; k < walls; k++)
+                Echo(buf, shot, Range(r, 0.015f, 0.09f), Range(r, 0.14f, 0.28f), Range(r, 2200f, 4200f) - k * 250f);
+            Echo(buf, shot, Range(r, 0.16f, 0.3f), Range(r, 0.12f, 0.18f), 1500f);
+            Echo(buf, shot, Range(r, 0.38f, 0.6f), Range(r, 0.05f, 0.09f), 900f);
+
+            // The rolling tail: the shot fed through a long, damped reverb, low-passed so it rumbles instead of hissing.
+            var tail = new float[buf.Length];
+            Array.Copy(buf, tail, buf.Length);
+            var tailLp = Biquad.LowPass(1800f);
+            var rv = new Reverb(0.92f, 0.6f);
+            for (int i = 0; i < tail.Length; i++) buf[i] += rv.Process(tailLp.Process(tail[i])) * 0.55f;
+
+            var dc = new OnePoleHP(35f);
+            for (int i = 0; i < buf.Length; i++) buf[i] = dc.Process(buf[i]);
             Normalize(buf, 0.98f);
-            Fade(buf, 0f, 0.4f);
+            Fade(buf, 0f, 0.5f);
             return buf;
+        }
+
+        /// <summary>A delayed, low-passed copy of `src` mixed into `dst` (a reflection off a surface).</summary>
+        static void Echo(float[] dst, float[] src, float delay, float gain, float cutoff)
+        {
+            var e = (float[])src.Clone();
+            var lp = Biquad.LowPass(cutoff);
+            for (int i = 0; i < e.Length; i++) e[i] = lp.Process(e[i]);
+            Mix(dst, e, Samples(delay), gain);
         }
 
         static float[] DryFire(Random r)

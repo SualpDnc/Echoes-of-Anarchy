@@ -95,11 +95,7 @@ namespace Echoes.Narrative
             // Through the yard gate.
             while (player.transform.position.z < AlleyBuilder.YardZ0 + 1.5f || player.transform.position.x > AlleyBuilder.BackAlleyX1 + 4f) yield return null;
             Done = true;
-            if (hud != null)
-            {
-                hud.SetObjective("Find Mia - the school");
-                hud.ShowHint("End of 6d. The school door (6e) continues from here.", 8f);
-            }
+            if (hud != null) hud.SetObjective("Find Mia - the school");
         }
 
         bool InGateAlley(float pastX)

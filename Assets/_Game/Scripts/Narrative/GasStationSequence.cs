@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Echoes.AI;
+using Echoes.Audio;
 using Echoes.Combat;
 using Echoes.Core;
 using Echoes.UI;
@@ -23,6 +24,7 @@ namespace Echoes.Narrative
         static readonly Vector3 Centre = new Vector3(-24f, 0f, -77f);
 
         readonly List<NPCBrain> looters = new List<NPCBrain>();
+        readonly List<NPCBrain> reinforcements = new List<NPCBrain>();
         NPCBrain kid, clerk, lastSurrendered;
         GameObject player;
         bool talking, clerkTalked, built;
@@ -55,6 +57,7 @@ namespace Echoes.Narrative
             {
                 clerk.startCowering = true;
                 clerk.gameObject.AddComponent<ClerkInteractable>().scene = this;
+                if (clerk.TryGetComponent(out Health h)) h.Died += _ => StoryState.ClerkAlive = false;
             }
 
             NPCBrain.AnySurrendered += OnSurrendered;
@@ -97,6 +100,7 @@ namespace Echoes.Narrative
                 hud.ShowHint("Looters at the gas station. Sneak round the back (C crouch, T light off), throw a bottle (G) to pull them away, or fight.", 9f);
             }
             StartCoroutine(Chatter());
+            StartCoroutine(Waves());
 
             while (!ThroughTheGate())
             {
@@ -113,6 +117,21 @@ namespace Echoes.Narrative
                 if (DialogueDirector.Instance != null) yield return DialogueDirector.Instance.Radio(DemoLines.PastTheStationRadio);
                 talking = false;
             }
+        }
+
+        /// <summary>
+        /// A checkpoint restart behind the station: the looters are dealt with (gone), and the clerk lies where she
+        /// died if Daniel killed her. Not a fromPlayer kill, so the Ledger (restored from the checkpoint) is untouched.
+        /// </summary>
+        public void RestoreAfterCheckpoint()
+        {
+            foreach (var l in looters) if (l != null) Destroy(l.gameObject);
+            looters.Clear();
+            foreach (var l in reinforcements) if (l != null) Destroy(l.gameObject);
+            reinforcements.Clear();
+            kid = null;
+            if (!StoryState.ClerkAlive && clerk != null && clerk.TryGetComponent(out Health h) && !h.IsDead)
+                h.ApplyDamage(new DamageInfo { amount = 999f, point = clerk.transform.position + Vector3.up, direction = Vector3.down, force = 20f, source = gameObject });
         }
 
         bool Approaching(Player.EchoesInput input, Player.CameraRig rig)
@@ -176,11 +195,95 @@ namespace Echoes.Narrative
                 StartCoroutine(Speak(DemoLines.StationSpared.At(lastSurrendered.transform)));
         }
 
+        // ------------------------------------------------------------------ reinforcements
+
+        // Owner: the fight at the station should be harder and come in waves. Sneaking past starts none of it; the
+        // first shot does. Wave 2 climbs the barricade on Harlow south of the lot; wave 3 flanks from the store's north
+        // corridor and the back gate. Each spawn point is used only while Daniel can't see it.
+        static readonly Vector3[] SouthWave = { new Vector3(-4f, 0f, -93.2f), new Vector3(2.5f, 0f, -93.2f), new Vector3(-8.5f, 0f, -93.2f) };
+        static readonly NPCWeapon[] SouthArms = { NPCWeapon.Pistol, NPCWeapon.Bat, NPCWeapon.Pistol };
+        static readonly Vector3[] FlankWave =
+        {
+            new Vector3(-32f, DistrictGenerator.Curb, -63.6f), new Vector3(-27f, DistrictGenerator.Curb, -63.6f), new Vector3(-40.5f, DistrictGenerator.Curb, -70f),
+        };
+        static readonly NPCWeapon[] FlankArms = { NPCWeapon.Pistol, NPCWeapon.Pistol, NPCWeapon.Bat };
+
+        bool Fighting()
+        {
+            foreach (var l in looters)
+                if (l == null || l.State == NPCState.Dead || l.State == NPCState.Attack) return true;
+            return false;
+        }
+
+        IEnumerator Waves()
+        {
+            while (!Done && !Fighting()) yield return null;
+            if (Done) yield break;
+            var rng = new System.Random(707);
+            yield return new WaitForSeconds(7f);
+            if (Done) yield break;
+            yield return Wave(SouthWave, SouthArms, rng, DemoLines.WaveSouth);
+
+            // The next ones once this wave is nearly spent.
+            float since = 0f;
+            while (!Done && (AliveIn(reinforcements) > 1 || since < 6f)) { since += Time.deltaTime; yield return null; }
+            if (Done) yield break;
+            yield return new WaitForSeconds(3f);
+            if (Done) yield break;
+            yield return Wave(FlankWave, FlankArms, rng, DemoLines.WaveFlank);
+        }
+
+        IEnumerator Wave(Vector3[] spawns, NPCWeapon[] arms, System.Random rng, Line shout)
+        {
+            var hud = BodycamHUD.Instance;
+            NPCBrain first = null;
+            for (int i = 0; i < spawns.Length; i++)
+            {
+                // Out of sight, or far enough that a pop-in can't be noticed; give up waiting after a few seconds.
+                for (float wait = 0f; wait < 4f && Visible(spawns[i]); wait += Time.deltaTime) yield return null;
+                if (Done) yield break;
+                var look = CharacterLook.Pick(Faction.Looter, rng);
+                look.Dress(rng);
+                var b = NPCSpawner.Create(look, rng, spawns[i], 0f, arms[i], false, 4f);
+                if (b == null) continue;
+                b.courage = 0.75f;   // reinforcements came for a fight: they don't break as easily
+                b.skill = 0.6f;
+                b.engageOnSpawn = true;
+                reinforcements.Add(b);
+                if (first == null) first = b;
+                yield return new WaitForSeconds(0.6f);
+            }
+            if (first == null) yield break;
+            if (AudioManager.Instance != null) AudioManager.Instance.Play2D(SoundId.TensionHit, 0.5f);
+            if (hud != null) hud.ShowHint("More of them coming!", 4f);
+            StartCoroutine(Speak(shout.At(first.transform)));
+        }
+
+        bool Visible(Vector3 p)
+        {
+            var cam = Camera.main;
+            if (cam == null) return false;
+            Vector3 head = p + Vector3.up * 1.6f, from = cam.transform.position;
+            if (Vector3.Distance(from, head) > 45f) return false;
+            Vector3 vp = cam.WorldToViewportPoint(head);
+            if (vp.z <= 0f || vp.x < -0.1f || vp.x > 1.1f || vp.y < -0.1f || vp.y > 1.1f) return false;
+            return !Physics.Linecast(from, head, ~0, QueryTriggerInteraction.Ignore);
+        }
+
+        static int AliveIn(List<NPCBrain> list)
+        {
+            int n = 0;
+            foreach (var b in list) if (b != null && b.State != NPCState.Dead && b.State != NPCState.Surrender && b.State != NPCState.Flee) n++;
+            return n;
+        }
+
         // ------------------------------------------------------------------ the clerk
+
+        bool ClerkDead => clerk == null || clerk.State == NPCState.Dead;
 
         public void TalkToClerk(GameObject who)
         {
-            if (clerk == null || talking) return;
+            if (ClerkDead || talking) return;
             if (clerkTalked)
             {
                 StartCoroutine(Speak(DemoLines.ClerkAgain.At(clerk.transform)));
@@ -195,6 +298,7 @@ namespace Echoes.Narrative
             var lines = DemoLines.ClerkTalk;
             foreach (var l in lines) if (l.who == Speaker.CivilianWoman) l.At(clerk.transform);
             yield return Speak(lines[0], lines[1], lines[2], lines[3]);
+            if (ClerkDead) yield break; // shot mid-conversation: no bottles, no last line (DialogueDirector cuts her off)
             if (who.TryGetComponent(out ThrowController t))
             {
                 t.bottles += 2;

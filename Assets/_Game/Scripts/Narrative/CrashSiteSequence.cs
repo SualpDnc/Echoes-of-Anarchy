@@ -102,6 +102,8 @@ namespace Echoes.Narrative
             Perception.PlayerConcealed = false;
             health.SetHealth(startHealth);
             playerHealth.medKits = 0; // his own kit went with the jump bag
+            // A full belt (owner: more rounds for the fight at the gas station): a loaded gun and five spare magazines.
+            if (player.TryGetComponent(out WeaponPistol gun)) { gun.ammoInMag = gun.magSize; gun.reserve = gun.magSize * 5; }
             if (hud != null)
             {
                 hud.SetVitalsVisible(true);
@@ -112,6 +114,7 @@ namespace Echoes.Narrative
             StartCoroutine(Watchers());
             StartCoroutine(LightTheWay());
             StartCoroutine(WrongWay());
+            StartCoroutine(StayNearLuis());
             yield return LuisScene();
             Done = true;
         }
@@ -158,6 +161,34 @@ namespace Echoes.Narrative
                 {
                     nextCall = Time.time + 9f;
                     yield return Speak(Luis(new[] { DemoLines.LuisCalling(calls++) }));
+                }
+                yield return null;
+            }
+        }
+
+        /// <summary>
+        /// Until Luis has said his piece, Daniel can't walk off (owner: you could leave before he finished): an invisible
+        /// tether round Luis, with Daniel saying why. The wake point and the spilled kits lie well inside it.
+        /// </summary>
+        IEnumerator StayNearLuis()
+        {
+            const float radius = 11f;
+            var hud = BodycamHUD.Instance;
+            float nextLine = 0f;
+            while (site.Luis != null && !luisChoiceOffered && !LuisTreated && !LuisDead)
+            {
+                Vector3 c = site.Luis.transform.position, p = player.transform.position;
+                Vector3 off = new Vector3(p.x - c.x, 0f, p.z - c.z);
+                float dist = off.magnitude;
+                if (dist > radius && body.enabled && body.Controller.enabled)
+                {
+                    body.Controller.Move(-off / dist * (dist - radius));
+                    if (Time.time > nextLine)
+                    {
+                        nextLine = Time.time + 8f;
+                        if (hud != null) hud.ShowHint("Luis is hurt. Go to him first.", 4f);
+                        if (!talking) StartCoroutine(Speak(new[] { DemoLines.StayWithLuis }));
+                    }
                 }
                 yield return null;
             }
@@ -277,11 +308,41 @@ namespace Echoes.Narrative
         IEnumerator LightTheWay()
         {
             yield return new WaitForSeconds(4f);
+            LightTheWayNow(0f, true);
+        }
+
+        void LightTheWayNow(float delay, bool onlyDark)
+        {
             foreach (var lamp in StreetLight.All.ToArray())
             {
                 Vector3 p = lamp.transform.position;
-                if (p.z < -10f && Mathf.Abs(p.x) < 10f && !lamp.IsOn) lamp.EmergencyPower(Random.Range(0.2f, 2.5f), 0.65f);
+                if (p.z < -10f && Mathf.Abs(p.x) < 10f && (!onlyDark || !lamp.IsOn)) lamp.EmergencyPower(delay + Random.Range(0.2f, 2.5f), 0.65f);
             }
+        }
+
+        /// <summary>Luis's part is over: treated, or dead. Leaving him alive only counts once the Smilers have been back.</summary>
+        public bool Resolved => LuisTreated || LuisDead;
+        public bool Busy => talking || Treating;
+
+        /// <summary>
+        /// A checkpoint restart past the crash site: the scene is not played, it is put back as Daniel left it. Luis
+        /// treated (he gave his radio), or dead by the wreck with the Smilers' grin beside him if they came back for him.
+        /// The lamps down Harlow are lit again.
+        /// </summary>
+        public void RestoreAfterCheckpoint()
+        {
+            LightTheWayNow(1.2f, false);
+            if (site.Luis == null) return;
+            luisHealth = site.Luis.GetComponent<Health>();
+            luisAnim = site.Luis.GetComponent<ProcAnimator>();
+            if (luisAnim != null) luisAnim.lookTarget = null;
+            if (StoryState.HasLuisRadio) LuisTreated = true;
+            if (StoryState.LuisAlive || luisHealth == null || luisHealth.IsDead) return;
+            bool executed = false;
+            foreach (var e in Ledger.Entries) if (e.act == LedgerAct.AbandonedWounded) executed = true;
+            foreach (var e in Ledger.Entries) if (e.act == LedgerAct.KilledCivilian && e.detail == "Luis") executed = false;
+            luisHealth.ApplyDamage(new DamageInfo { amount = 999f, point = site.Luis.transform.position + Vector3.up, direction = Vector3.down, force = 40f, source = gameObject, part = BodyPart.Head });
+            if (executed) site.PaintGrinBesideLuis();
         }
 
         /// <summary>Walking up to the barricade: Daniel turns himself round.</summary>

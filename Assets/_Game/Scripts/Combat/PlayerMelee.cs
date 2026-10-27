@@ -8,7 +8,7 @@ namespace Echoes.Combat
 {
     /// <summary>
     /// Close-quarters strike on the interact key: a pistol-whip when the gun is out, a gloved punch otherwise.
-    /// Damage lands at the contact frame of the swing. Quiet compared to a gunshot; a blow to the head usually drops a man.
+    /// Damage lands at the contact frame of the swing. Quiet compared to a gunshot; a blow to the head hurts, but it takes more than one.
     /// </summary>
     public class PlayerMelee : MonoBehaviour
     {
@@ -16,7 +16,8 @@ namespace Echoes.Combat
         const float ContactAt = 0.4f; // fraction of the swing where the blow connects
 
         public float reach = 1.9f;
-        public float damage = 40f;
+        [Tooltip("Halved from 40 at the owner's request: a blow staggers, it rarely ends a fight on its own.")]
+        public float strikeDamage = 20f; // renamed from `damage` so scenes built with the old 40 pick up the new value
         public float cooldown = 0.75f;
 
         CameraRig rig;
@@ -115,7 +116,7 @@ namespace Echoes.Combat
             Transform cam = rig.cam.transform;
             target.Hit(new DamageInfo
             {
-                amount = damage * (armed ? 1f : 0.6f),
+                amount = strikeDamage * (armed ? 1f : 0.6f),
                 point = target.transform.position,
                 direction = cam.forward,
                 force = 180f,

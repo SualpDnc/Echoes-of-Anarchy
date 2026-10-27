@@ -26,23 +26,24 @@ namespace Echoes.AI
                     LedSmile(mb, look);
                     return;
                 case HeadKind.Pig:
-                    Skull(mb, look.skin, false);
+                    Skull(mb, look, false);
                     Pig(mb);
                     return;
                 case HeadKind.Angel:
-                    Skull(mb, look.skin, false);
+                    Skull(mb, look, false);
                     Angel(mb);
                     Hood(mb, look.topMat);
                     return;
                 case HeadKind.Hood:
-                    Skull(mb, look.skin, true);
-                    Eyes(mb, look, false);
+                    Skull(mb, look, true, look.closeUp ? FaceShape(look) : null);
+                    if (look.closeUp) CloseUpEyes(mb, look); // the bandana covers the rest
+                    else Eyes(mb, look, false);
                     Bandana(mb, rng);
                     Hood(mb, look.topMat);
                     return;
                 default:
-                    Skull(mb, look.skin, true, look.closeUp);
-                    if (look.closeUp) CloseUpFace(mb, look);
+                    Skull(mb, look, true, look.closeUp ? FaceShape(look) : null);
+                    if (look.closeUp) { CloseUpEyes(mb, look); CloseUpMouth(mb, look); }
                     else Eyes(mb, look, true);
                     Hair(mb, look);
                     return;
@@ -100,67 +101,170 @@ namespace Echoes.AI
             return o;
         }
 
-        static Vector3 Dir(float fx, float fy) => new Vector3(fx, fy, Mathf.Sqrt(Mathf.Max(0.05f, 1f - fx * fx - fy * fy))).normalized;
-
-        /// <summary>Point on the sculpted skull for face coordinates (−1..1), pushed out by lift (times scale for shells).</summary>
-        static Vector3 SkullPoint(float fx, float fy, float lift, float scale = 1f, bool closeUp = false)
+        /// <summary>
+        /// A woman's face on the same detailed skull: a rounder jaw that tapers to a small chin, a flatter brow ridge,
+        /// fuller cheeks and a smaller nose.
+        /// </summary>
+        static Vector3 SculptSoft(Vector3 d)
         {
-            var d = Dir(fx, fy);
-            return C + Vector3.Scale(d, R) * scale + (closeUp ? SculptCloseUp(d) : Sculpt(d)) + d * lift;
-        }
-
-        static void Skull(SkinnedBodyBuilder mb, Material skin, bool ears, bool closeUp = false)
-        {
-            if (closeUp) mb.Ellipsoid(skin, C, R, Quaternion.identity, OnHead, 26, 36, SculptCloseUp);
-            else mb.Ellipsoid(skin, C, R, Quaternion.identity, OnHead, 16, 22, Sculpt);
-            if (!ears) return;
-            foreach (float side in new[] { -1f, 1f })
-                mb.Ellipsoid(skin, C + new Vector3(side * 0.094f, -0.008f, -0.006f), new Vector3(0.012f, 0.028f, 0.018f),
-                             Quaternion.Euler(0f, side * 20f, 0f), OnHead, 6, 8);
+            float front = Mathf.Clamp01(d.z * 1.5f);
+            float ax = Mathf.Abs(d.x), side = Mathf.Sign(d.x);
+            var o = SculptCloseUp(d);
+            o.x -= side * 0.005f * G(ax - 0.8f, d.y + 0.55f, 0.15f, 0.15f);                        // no square jaw angle
+            o.x -= side * 0.004f * G(ax - 0.55f, d.y + 0.7f, 0.25f, 0.18f);                        // narrower lower jaw
+            o.z -= 0.0045f * G(0f, d.y - 0.22f, 1f, 0.08f) * Mathf.Clamp01(1f - ax * 1.6f) * front; // flatter brow
+            o.z -= 0.006f * G(d.x, d.y + 0.1f, 0.08f, 0.2f) * front;                               // smaller nose
+            o.z += 0.003f * (G(ax - 0.42f, d.y + 0.2f, 0.16f, 0.12f)) * front;                    // fuller cheeks
+            return o;
         }
 
         /// <summary>
-        /// A face that holds up at arm's length (owner: Luis looked faceless in the cab): eyeballs with iris and pupil
-        /// under upper and lower lids, fuller brows, two lips and the line between them, and a shadow of stubble.
+        /// A lived-in, bony face for the one seen closest (Luis; owner: "sharper, more realistic lines"): high
+        /// cheekbones with hollows under them, a ridge along the jaw, a heavier brow over deeper sockets, a narrow nose
+        /// with a bump on the bridge, set folds from the nose to the mouth, two forehead lines. Scaled by look.definition.
         /// </summary>
-        static void CloseUpFace(SkinnedBodyBuilder mb, CharacterLook look)
+        static Vector3 Rugged(Vector3 d)
         {
+            float front = Mathf.Clamp01(d.z * 1.5f);
+            float ax = Mathf.Abs(d.x), side = Mathf.Sign(d.x);
+            var o = Vector3.zero;
+            o.z += 0.006f * G(ax - 0.5f, d.y + 0.05f, 0.12f, 0.07f) * front;              // cheekbones forward
+            o.x += side * 0.0045f * G(ax - 0.64f, d.y + 0.07f, 0.12f, 0.08f);            // and out
+            o.z -= 0.0055f * G(ax - 0.47f, d.y + 0.33f, 0.12f, 0.1f) * front;             // hollow under them
+            float jawY = -0.6f - (1f - ax) * 0.22f;                                         // the jaw's edge falls toward the chin
+            o += d * 0.0045f * G(0f, d.y - jawY, 1f, 0.045f) * Mathf.Clamp01(d.z + 0.5f);
+            o -= d * 0.003f * G(0f, d.y - jawY + 0.09f, 1f, 0.05f) * Mathf.Clamp01(ax * 2f) * front; // and a shadow above it
+            o.z += 0.0045f * G(0f, d.y - 0.19f, 1f, 0.045f) * Mathf.Clamp01(1f - ax * 1.8f) * front; // heavier brow
+            o.z -= 0.0035f * (G(d.x - 0.3f, d.y - 0.05f, 0.08f, 0.055f) + G(d.x + 0.3f, d.y - 0.05f, 0.08f, 0.055f)) * front; // deeper sockets
+            o.z += 0.0032f * G(d.x, d.y - 0.03f, 0.035f, 0.045f) * front;                  // bump on the bridge
+            o.x -= d.x * 0.07f * G(d.x, d.y + 0.08f, 0.1f, 0.16f) * front;                 // narrower nose
+            float fold = ax - 0.17f - (-d.y - 0.28f) * 0.5f;
+            o.z -= 0.003f * G(fold, d.y + 0.38f, 0.018f, 0.11f) * front;                   // nasolabial fold, deeper
+            o.z += 0.0022f * G(fold - 0.045f, d.y + 0.36f, 0.03f, 0.11f) * front;          // the cheek pad beside it
+            for (int k = 0; k < 2; k++)                                                      // forehead lines
+                o.z -= 0.0009f * G(d.x * 0.5f, d.y - 0.5f - k * 0.1f, 0.25f, 0.018f) * front;
+            return o;
+        }
+
+        static Func<Vector3, Vector3> FaceShape(CharacterLook look)
+        {
+            Func<Vector3, Vector3> shape = look.feminine ? (Func<Vector3, Vector3>)SculptSoft : SculptCloseUp;
+            if (look.definition <= 0f) return shape;
+            float k = look.definition;
+            return d => shape(d) + Rugged(d) * k;
+        }
+
+        /// <summary>Skull rings and segments: the most defined faces need more of them for the folds to show.</summary>
+        static void SkullRes(CharacterLook look, out int lat, out int lon)
+        {
+            lat = look.definition > 0f ? 46 : 30;
+            lon = look.definition > 0f ? 62 : 42;
+        }
+
+        static Vector3 Dir(float fx, float fy) => new Vector3(fx, fy, Mathf.Sqrt(Mathf.Max(0.05f, 1f - fx * fx - fy * fy))).normalized;
+
+        /// <summary>Point on the sculpted skull for face coordinates (−1..1), pushed out by lift (times scale for shells).</summary>
+        static Vector3 SkullPoint(float fx, float fy, float lift, float scale = 1f, Func<Vector3, Vector3> shape = null)
+        {
+            var d = Dir(fx, fy);
+            return C + Vector3.Scale(d, R) * scale + (shape != null ? shape(d) : Sculpt(d)) + d * lift;
+        }
+
+        /// <summary>The skull; with a detailed shape it is denser and the ears get a rim and a bowl.</summary>
+        static void Skull(SkinnedBodyBuilder mb, CharacterLook look, bool ears, Func<Vector3, Vector3> shape = null)
+        {
+            var skin = look.skin;
+            SkullRes(look, out int lat, out int lon);
+            if (shape != null) mb.Ellipsoid(skin, C, R, Quaternion.identity, OnHead, lat, lon, d => shape(d));
+            else mb.Ellipsoid(skin, C, R, Quaternion.identity, OnHead, 16, 22, Sculpt);
+            if (!ears) return;
+            foreach (float side in new[] { -1f, 1f })
+            {
+                Vector3 ear = C + new Vector3(side * 0.094f, -0.008f, -0.006f);
+                Quaternion turn = Quaternion.Euler(0f, side * 20f, 0f);
+                if (shape == null) { mb.Ellipsoid(skin, ear, new Vector3(0.012f, 0.028f, 0.018f), turn, OnHead, 6, 8); continue; }
+                // Outer face cupped in (the bowl), the rim rolled out, the lobe hanging a little fuller.
+                mb.Ellipsoid(skin, ear, new Vector3(0.012f, 0.029f, 0.018f), turn, OnHead, 10, 14,
+                             e => new Vector3(-side * 0.004f * Mathf.Clamp01(1f - e.y * e.y - e.z * e.z) * Mathf.Clamp01(e.x * side * 2f),
+                                              -0.004f * Mathf.Clamp01(-e.y - 0.5f), 0f));
+            }
+        }
+
+        /// <summary>
+        /// Eyes that hold up at arm's length (owner: Luis looked faceless in the cab, then asked for every character as
+        /// realistic as possible): eyeballs with iris and pupil under upper and lower lids, a lash line, a wet rim along
+        /// the lower lid, and brows as rows of tufts. Women get darker, longer lashes and thinner, arched brows.
+        /// </summary>
+        static void CloseUpEyes(SkinnedBodyBuilder mb, CharacterLook look)
+        {
+            var shape = FaceShape(look);
+            bool fem = look.feminine;
             var white = RuntimeMaterials.Lit(new Color(0.7f, 0.62f, 0.58f), 0.93f); // a little pink, wet
             var iris = RuntimeMaterials.Lit(new Color(0.07f, 0.04f, 0.02f), 0.9f);
-            var irisInner = RuntimeMaterials.Lit(new Color(0.16f, 0.09f, 0.04f), 0.9f);
-            var lash = RuntimeMaterials.Lit(new Color(0.015f, 0.01f, 0.008f), 0.3f);
+            var irisInner = RuntimeMaterials.Lit(look.irisColor, 0.9f);
+            var lash = RuntimeMaterials.Lit(new Color(0.012f, 0.008f, 0.006f), 0.3f);
             var pupil = RuntimeMaterials.Lit(new Color(0.004f, 0.004f, 0.004f), 0.95f);
-            var line = RuntimeMaterials.Lit(new Color(look.skinTone.r * 0.35f, look.skinTone.g * 0.25f, look.skinTone.b * 0.25f), 0.4f);
-            var stubble = RuntimeMaterials.Lit(look.skinTone * 0.68f, 0.25f);
+            var wet = RuntimeMaterials.Lit(new Color(look.skinTone.r * 0.9f, look.skinTone.g * 0.55f, look.skinTone.b * 0.5f), 0.95f);
             var brow = look.hair == HairKind.Long || look.hair == HairKind.Short ? look.hairMat : RuntimeMaterials.Lit(new Color(0.03f, 0.02f, 0.015f), 0.2f);
             foreach (float side in new[] { -1f, 1f })
             {
-                Vector3 eye = SkullPoint(side * 0.3f, 0.07f, -0.006f, 1f, true);
-                mb.Ellipsoid(white, eye, new Vector3(0.012f, 0.0095f, 0.009f), Quaternion.identity, OnHead, 8, 12);
-                mb.Ellipsoid(iris, eye + new Vector3(0f, 0f, 0.0078f), new Vector3(0.0052f, 0.0052f, 0.0016f), Quaternion.identity, OnHead, 6, 10);
-                mb.Ellipsoid(irisInner, eye + new Vector3(0f, 0f, 0.0083f), new Vector3(0.0038f, 0.0038f, 0.0013f), Quaternion.identity, OnHead, 6, 10); // dark limbal ring around a lighter iris
-                // Lash line along the edge of the upper lid.
-                mb.Ellipsoid(lash, eye + new Vector3(0f, 0.0052f, 0.0094f), new Vector3(0.0125f, 0.001f, 0.0016f), Quaternion.identity, OnHead, 4, 10);
+                Vector3 eye = SkullPoint(side * 0.3f, 0.07f, -0.006f, 1f, shape);
+                mb.Ellipsoid(white, eye, new Vector3(0.012f, 0.0095f, 0.009f), Quaternion.identity, OnHead, 10, 14);
+                mb.Ellipsoid(iris, eye + new Vector3(0f, 0f, 0.0078f), new Vector3(0.0052f, 0.0052f, 0.0016f), Quaternion.identity, OnHead, 6, 12);
+                mb.Ellipsoid(irisInner, eye + new Vector3(0f, 0f, 0.0083f), new Vector3(0.0038f, 0.0038f, 0.0013f), Quaternion.identity, OnHead, 6, 12); // dark limbal ring around a lighter iris
                 mb.Ellipsoid(pupil, eye + new Vector3(0f, 0f, 0.0092f), new Vector3(0.0024f, 0.0024f, 0.0008f), Quaternion.identity, OnHead, 4, 8);
-                // Lids: skin shells over the top and bottom of the eyeball.
-                mb.Ellipsoid(look.skin, eye + new Vector3(0f, 0.0015f, 0.0005f), new Vector3(0.0135f, 0.0105f, 0.0098f), Quaternion.identity, OnHead, 8, 12,
+                // Lash line along the edge of the upper lid; women's lashes are longer and flick out at the corner.
+                mb.Ellipsoid(lash, eye + new Vector3(0f, 0.0052f, 0.0094f), new Vector3(0.0125f, fem ? 0.0016f : 0.001f, fem ? 0.0024f : 0.0016f), Quaternion.identity, OnHead, 4, 10);
+                if (fem) mb.Ellipsoid(lash, eye + new Vector3(side * 0.011f, 0.0062f, 0.007f), new Vector3(0.0035f, 0.0011f, 0.0014f),
+                                      Quaternion.Euler(0f, 0f, side * 25f), OnHead, 3, 6);
+                // Lids: skin shells over the top and bottom of the eyeball, and the wet pink rim on the lower one.
+                mb.Ellipsoid(look.skin, eye + new Vector3(0f, 0.0015f, 0.0005f), new Vector3(0.0135f, 0.0105f, 0.0098f), Quaternion.identity, OnHead, 10, 14,
                              null, d => d.y > 0.35f && d.z > -0.2f);
-                mb.Ellipsoid(look.skin, eye + new Vector3(0f, -0.001f, 0.0003f), new Vector3(0.0132f, 0.0102f, 0.0096f), Quaternion.identity, OnHead, 8, 12,
+                mb.Ellipsoid(look.skin, eye + new Vector3(0f, -0.001f, 0.0003f), new Vector3(0.0132f, 0.0102f, 0.0096f), Quaternion.identity, OnHead, 10, 14,
                              null, d => d.y < -0.55f && d.z > -0.2f);
+                mb.Ellipsoid(wet, eye + new Vector3(0f, -0.0072f, 0.0068f), new Vector3(0.0105f, 0.0009f, 0.0018f), Quaternion.identity, OnHead, 3, 8);
+                // A fold of skin above the lid (the crease), so the eye sits in a socket instead of on the face.
+                mb.Ellipsoid(look.skin, eye + new Vector3(0f, 0.0105f, 0.0035f), new Vector3(0.0135f, 0.0028f, 0.006f), Quaternion.identity, OnHead, 4, 10);
                 // Brows as a row of short tufts: thick at the inner end, thinning toward the temple.
-                for (int k = 0; k < 6; k++)
+                int tufts = fem ? 8 : 7;
+                for (int k = 0; k < tufts; k++)
                 {
-                    float u = k / 5f;
-                    float fx = side * (0.17f + u * 0.26f), fy = 0.205f + 0.03f * Mathf.Sin(u * Mathf.PI * 0.8f);
-                    mb.Ellipsoid(brow, SkullPoint(fx, fy, 0.0015f, 1f, true), new Vector3(0.0065f, 0.0042f - u * 0.0018f, 0.0045f),
+                    float u = k / (tufts - 1f);
+                    float arch = fem ? 0.045f : 0.03f;
+                    float fx = side * (0.17f + u * 0.26f), fy = 0.205f + arch * Mathf.Sin(u * Mathf.PI * 0.8f) + (fem ? 0.012f : 0f);
+                    float thick = fem ? 0.0028f - u * 0.0012f : 0.0042f - u * 0.0018f;
+                    mb.Ellipsoid(brow, SkullPoint(fx, fy, 0.0015f, 1f, shape), new Vector3(0.006f, thick, 0.0045f),
                                  Quaternion.Euler(0f, side * 18f, side * (-25f + u * 30f)), OnHead, 3, 6);
                 }
             }
-            mb.Ellipsoid(look.lips, SkullPoint(0f, -0.44f, -0.0035f, 1f, true), new Vector3(0.021f, 0.0045f, 0.0065f), Quaternion.identity, OnHead, 6, 10);
-            mb.Ellipsoid(look.lips, SkullPoint(0f, -0.505f, -0.003f, 1f, true), new Vector3(0.019f, 0.006f, 0.007f), Quaternion.identity, OnHead, 6, 10);
-            mb.Ellipsoid(line, SkullPoint(0f, -0.472f, 0.0005f, 1f, true), new Vector3(0.0185f, 0.0011f, 0.003f), Quaternion.identity, OnHead, 4, 8);
+        }
+
+        /// <summary>
+        /// Two lips and the dark line between them, nostrils under the tip of the nose, and on men a shadow of stubble.
+        /// </summary>
+        static void CloseUpMouth(SkinnedBodyBuilder mb, CharacterLook look)
+        {
+            var shape = FaceShape(look);
+            bool fem = look.feminine;
+            var line = RuntimeMaterials.Lit(new Color(look.skinTone.r * 0.35f, look.skinTone.g * 0.25f, look.skinTone.b * 0.25f), 0.4f);
+            var nostril = RuntimeMaterials.Lit(new Color(look.skinTone.r * 0.2f, look.skinTone.g * 0.12f, look.skinTone.b * 0.1f), 0.3f);
+            float full = fem ? 1.25f : 1f;
+            mb.Ellipsoid(look.lips, SkullPoint(0f, -0.44f, -0.0035f, 1f, shape), new Vector3(0.021f, 0.0045f * full, 0.0065f * full), Quaternion.identity, OnHead, 8, 12);
+            mb.Ellipsoid(look.lips, SkullPoint(0f, -0.505f, -0.003f, 1f, shape), new Vector3(0.019f, 0.006f * full, 0.007f * full), Quaternion.identity, OnHead, 8, 12);
+            mb.Ellipsoid(line, SkullPoint(0f, -0.472f, 0.0005f * full, 1f, shape), new Vector3(0.0185f, 0.0011f, 0.003f), Quaternion.identity, OnHead, 4, 8);
+            // Mouth corners tuck in a little: short dark creases at each end of the line.
+            foreach (float side in new[] { -1f, 1f })
+            {
+                mb.Ellipsoid(line, SkullPoint(side * 0.2f, -0.475f, -0.001f, 1f, shape), new Vector3(0.003f, 0.0015f, 0.002f), Quaternion.identity, OnHead, 3, 6);
+                // Nostrils: dark ovals tucked under the tip, angled out with the wings.
+                mb.Ellipsoid(nostril, SkullPoint(side * 0.045f, -0.29f, 0.0003f, 1f, shape), new Vector3(0.0038f, 0.0022f, 0.0045f),
+                             Quaternion.Euler(35f, side * 25f, 0f), OnHead, 4, 8);
+            }
+            if (fem) return;
             // Stubble: the same skull mesh lifted 1.4 mm (identical tessellation, so nothing pokes through), jaw and upper lip only.
-            mb.Ellipsoid(stubble, C, R, Quaternion.identity, OnHead, 26, 36, d => SculptCloseUp(d) + d * 0.0014f,
+            var stubble = RuntimeMaterials.Lit(look.skinTone * 0.68f, 0.25f);
+            SkullRes(look, out int lat, out int lon);
+            mb.Ellipsoid(stubble, C, R, Quaternion.identity, OnHead, lat, lon, d => shape(d) + d * 0.0014f,
                          d => d.y < -0.2f && d.y > -0.95f && d.z > 0.05f && Mathf.Abs(d.x) < 0.8f
                               && !(Mathf.Abs(d.x) < 0.22f && d.y > -0.56f && d.y < -0.4f) && !(Mathf.Abs(d.x) < 0.14f && d.y > -0.33f));
         }
@@ -191,14 +295,18 @@ namespace Echoes.AI
                     Func<Vector3, bool> keep = d =>
                         d.y > Mathf.Lerp(-0.55f, 0.42f, Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(-0.3f, 0.75f, d.z))) &&
                         !(Mathf.Abs(d.x) > 0.75f && d.y < 0.2f && d.z > -0.4f);
-                    mb.Ellipsoid(look.hairMat, C + new Vector3(0f, 0.008f, -0.004f), R * 1.07f, Quaternion.identity, OnHead, 14, 22,
-                                 d => Sculpt(d) * 0.4f + d * 0.003f * Mathf.Sin(d.x * 23f + d.z * 17f), keep);
+                    // Detailed heads get a denser cap with finer clumping (two frequencies), so the hair isn't a helmet.
+                    bool fine = look.closeUp;
+                    mb.Ellipsoid(look.hairMat, C + new Vector3(0f, 0.008f, -0.004f), R * 1.07f, Quaternion.identity, OnHead, fine ? 24 : 14, fine ? 36 : 22,
+                                 d => Sculpt(d) * 0.4f + d * (0.003f * Mathf.Sin(d.x * 23f + d.z * 17f) + (fine ? 0.0012f * Mathf.Sin(d.x * 61f - d.y * 47f + d.z * 13f) : 0f)), keep);
                     if (look.hair == HairKind.Long)
                     {
-                        // Curtain down the back to the shoulders; the lower part follows the chest.
+                        // Curtain down the back to the shoulders; the lower part follows the chest. Vertical ridges read as locks.
                         Func<Vector3, Skin> drape = p => Skin.Blend(Bone.Head, Bone.Chest, Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(1.62f, 1.5f, p.y)));
-                        mb.Ellipsoid(look.hairMat, C + new Vector3(0f, -0.085f, -0.04f), new Vector3(0.1f, 0.15f, 0.07f), Quaternion.Euler(-8f, 0f, 0f), drape, 10, 16,
-                                     null, d => d.z < 0.25f);
+                        mb.Ellipsoid(look.hairMat, C + new Vector3(0f, -0.085f, -0.04f), new Vector3(0.1f, 0.15f, 0.07f), Quaternion.Euler(-8f, 0f, 0f), drape,
+                                     fine ? 16 : 10, fine ? 28 : 16,
+                                     fine ? d => d * 0.004f * Mathf.Sin(Mathf.Atan2(d.x, d.z) * 17f) * Mathf.Clamp01(1f - d.y) : (Func<Vector3, Vector3>)null,
+                                     d => d.z < 0.25f);
                     }
                     break;
                 }

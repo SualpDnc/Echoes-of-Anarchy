@@ -73,6 +73,24 @@ namespace Echoes.Narrative
             StartCoroutine(Begin());
         }
 
+        /// <summary>
+        /// A checkpoint restart later in the night: the Purge is long under way. No siren and no wave; the lamps are
+        /// already dead (some on emergency power) and the city is already loud. Call before the clock passes 19:00.
+        /// </summary>
+        public void AlreadyStarted()
+        {
+            if (Started) return;
+            Started = true;
+            foreach (var lamp in StreetLight.All.ToArray())
+            {
+                lamp.PowerCut(0f);
+                // After the cut's dying stutters (under a second), so the two never fight over the lamp.
+                if (UnityEngine.Random.value < emergencyFraction)
+                    lamp.EmergencyPower(UnityEngine.Random.Range(1.2f, 1.6f), emergencyLevel * UnityEngine.Random.Range(0.8f, 1.1f));
+            }
+            if (distant != null) distant.purgeActive = true;
+        }
+
         IEnumerator Begin()
         {
             PurgeStarted?.Invoke();

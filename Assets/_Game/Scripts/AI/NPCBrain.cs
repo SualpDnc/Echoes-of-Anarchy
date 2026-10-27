@@ -46,6 +46,8 @@ namespace Echoes.AI
         [Header("Story chase")]
         [Tooltip("Runs Daniel down wherever he is and, until he hurts one of them, only shoots to scare and hits to hurt (the Smilers want him alive, on camera).")]
         public bool hunting;
+        [Tooltip("Arrives already fighting: alerted to the player on spawn (reinforcement waves).")]
+        public bool engageOnSpawn;
         /// <summary>Daniel has hurt one of the hunters: from now on they shoot to hit.</summary>
         public bool HuntProvoked { get; private set; }
 
@@ -111,7 +113,7 @@ namespace Echoes.AI
             if (home == Vector3.zero) home = transform.position;
             Arm();
             CarryLight();
-            if (hunting && player != null) { perception.ForceAlert(player.position); SetState(NPCState.Attack); }
+            if ((hunting || engageOnSpawn) && player != null) { perception.ForceAlert(player.position); SetState(NPCState.Attack); }
             else SetState(startCowering ? NPCState.Cower : stationary ? NPCState.Idle : NPCState.Patrol);
         }
 

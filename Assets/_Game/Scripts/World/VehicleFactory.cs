@@ -207,8 +207,10 @@ namespace Echoes.World
             rig.compartmentLight.intensity = 0.9f;
             rig.compartmentLight.enabled = false;
 
-            // --- Seats: Daniel's body root in the passenger seat (camera pivot 1.46 m above it lands at chest height).
-            rig.passengerMount = Empty(body, "PassengerMount", new Vector3(0.5f, 0.2f, 1.62f));
+            // --- Seats: Daniel's body root in the passenger seat. The camera pivot sits 1.46 m above it: at 0.2 it
+            // landed at Luis's chest and the owner felt like a dwarf next to him; at 0.46 it is a hand under his eyes (2.0),
+            // about where a seated man's eyes are (the roof liner is at 2.25).
+            rig.passengerMount = Empty(body, "PassengerMount", new Vector3(0.5f, 0.46f, 1.62f));
             rig.driverSeat = Empty(body, "DriverSeat", new Vector3(-0.5f, 1.28f, 1.72f));
 
             // --- Wheels (not part of the sprung body).

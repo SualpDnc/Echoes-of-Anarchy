@@ -20,6 +20,7 @@ namespace Echoes.AI
 
         void Update()
         {
+            if (!Debug.isDebugBuild) return; // developer keys: editor and development builds only
             var kb = UnityEngine.InputSystem.Keyboard.current;
             if (kb == null) return;
             if (kb.f8Key.wasPressedThisFrame)

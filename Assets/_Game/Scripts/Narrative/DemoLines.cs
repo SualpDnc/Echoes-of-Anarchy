@@ -118,6 +118,7 @@ namespace Echoes.Narrative
         };
 
         public static Line WrongWay => L(Speaker.Daniel, "Not that way. Home's south.", "O taraf olmaz. Ev güneyde.");
+        public static Line StayWithLuis => L(Speaker.Daniel, "Luis first. I'm not leaving him like this.", "Önce Luis. Onu bu halde bırakmam.");
 
         /// <summary>Treated: Luis hands over his radio and becomes Daniel's eyes on the dispatch channel.</summary>
         public static Line[] LuisGivesRadio => new[]
@@ -157,6 +158,10 @@ namespace Echoes.Narrative
 
         public static Line StationSurrender => L(Speaker.Looter, "Don't shoot! I'm done, man, I'm done!", "Ateş etme! Bıraktım abi, bıraktım!");
         public static Line StationSpared => L(Speaker.Looter, "Thank you... thank you, man.", "Sağ ol... sağ ol abi.");
+
+        /// <summary>Reinforcements once the shooting starts (owner: the station fight in waves).</summary>
+        public static Line WaveSouth => L(Speaker.Looter, "Over the wall! They're hitting our guys at the pumps!", "Duvarın üstünden! Pompalarda bizimkilere giriyorlar!");
+        public static Line WaveFlank => L(Speaker.Looter, "Round the back! Box him in!", "Arkadan dolaşın! Sıkıştırın şunu!");
 
         /// <summary>The clerk hiding behind the counter.</summary>
         public static Line[] ClerkTalk => new[]
@@ -232,5 +237,34 @@ namespace Echoes.Narrative
             L(Speaker.Daniel, "Stay where you are. I'm coming.", "Olduğun yerde kal. Geliyorum."),
             L(Speaker.MiaClone, "Hurry, Daddy. Everyone's watching.", "Acele et babacığım. Herkes izliyor.").Glitch(0.7f),
         };
+
+        // ------------------------------------------------------------------ sequence 5: the school door
+
+        /// <summary>From the phone on the tripod in front of the door: still "her" voice, still "Daddy".</summary>
+        public static Line SchoolDoorMia => L(Speaker.MiaClone, "Daddy? I'm inside. Look at the door, Daddy.", "Babacığım? İçerideyim. Kapıya bak babacığım.").Glitch(0.6f);
+        public static Line SchoolDoorDaniel => L(Speaker.Daniel, "Mia?!", "Mia?!");
+
+        public static Line[] PhotoLook => new[]
+        {
+            L(Speaker.Daniel, "That's me. Parris Island, twenty-sixteen.", "Bu benim. Parris Island, iki bin on altı."),
+            L(Speaker.Daniel, "This was on Mia's wall. In her room.", "Bu Mia'nın duvarındaydı. Kendi odasında."),
+        };
+
+        public static Line[] StreamTaunt => new[]
+        {
+            L(Speaker.Smiler, "Smile, Danny. You're live.", "Gülümse, Danny. Canlı yayındasın."),
+            L(Speaker.Smiler, "Forty thousand people want to see what a Marine does to get his little girl back.",
+                              "Kırk bin kişi bir denizcinin kızını geri almak için ne yapacağını görmek istiyor."),
+        };
+
+        public static Line StreamLuisDead => L(Speaker.Smiler, "They already loved the part where you left Luis.", "Luis'i bırakıp gittiğin kısma zaten bayıldılar.");
+        public static Line StreamLuisRadio => L(Speaker.LuisRadio, "Danny... you're on my phone. You're on every phone. Get out of the light!",
+                                                "Danny... telefonumdasın. Her telefonda sen varsın. Işıktan çık!");
+        public static Line WhereIsShe => L(Speaker.Daniel, "Where is she?!", "Nerede o?!");
+        public static Line RoundTwo => L(Speaker.Smiler, "Round two starts now.", "İkinci tur şimdi başlıyor.");
+        public static Line LastDaddy => L(Speaker.MiaClone, "Daddy—", "Babacığım—").Glitch(1f).Then(0f);
+
+        /// <summary>Over black, after the footage cuts: Detective Hale, the morning after.</summary>
+        public static Line HaleNote => L(Speaker.Hale, "Three hours. Gone. Where were you, Mister Reyes?", "Üç saat. Kayıp. Neredeydiniz, Bay Reyes?");
     }
 }

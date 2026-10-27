@@ -117,6 +117,7 @@ namespace Echoes.Narrative
             look.gloves = true;
             look.shortSleeves = false;
             look.closeUp = true; // he is half a metre from the camera for a minute
+            look.definition = 1f;  // owner: sharper, more realistic lines on his face
             look.Dress(rng);
             // A mid skin tone, so his features read in the dim cab.
             look.skinTone = new Color(0.5f, 0.34f, 0.25f);
@@ -140,6 +141,7 @@ namespace Echoes.Narrative
             health.Died += info =>
             {
                 if (info.fromPlayer) Ledger.Record(LedgerAct.KilledCivilian, "Luis");
+                StoryState.LuisAlive = false; // whoever killed him: later scenes (and checkpoints) see a dead man
                 luisAnim.enabled = false;
                 Luis.EnableRagdoll(Vector3.zero, info);
             };

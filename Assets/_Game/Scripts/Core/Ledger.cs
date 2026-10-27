@@ -56,6 +56,15 @@ namespace Echoes.Core
 #endif
         }
 
+        /// <summary>Back to a saved record (a checkpoint restart): listeners are not told, nothing new happened.</summary>
+        public static void Restore(IEnumerable<Entry> saved)
+        {
+            entries.Clear();
+            entries.AddRange(saved);
+            Mercy = 0;
+            foreach (var e in entries) Mercy += Weight(e.act);
+        }
+
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
         static void ResetOnPlay()
         {

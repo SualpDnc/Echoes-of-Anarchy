@@ -2,6 +2,7 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using Echoes.Audio;
+using Echoes.Combat;
 using Echoes.Core;
 using Echoes.UI;
 
@@ -37,9 +38,22 @@ namespace Echoes.Narrative
 
         public Coroutine Run(IEnumerator sequence) => StartCoroutine(sequence);
 
+        /// <summary>Lines in order. Once anyone speaking in it has died, the conversation is over (no replies to a corpse).</summary>
         public IEnumerator Conversation(params Line[] lines)
         {
-            foreach (var l in lines) yield return Say(l);
+            foreach (var l in lines)
+            {
+                foreach (var other in lines) if (IsDead(other)) yield break;
+                yield return Say(l);
+            }
+        }
+
+        /// <summary>The speaker of a line said in the world (someone standing there) has been killed.</summary>
+        static bool IsDead(Line line)
+        {
+            if (line.source == null || (line.channel ?? Speakers.Get(line.who).channel) != LineChannel.World) return false;
+            var h = line.source.GetComponentInParent<Health>();
+            return h != null && h.IsDead;
         }
 
         /// <summary>Radio traffic: a squelch before and after each transmission.</summary>
@@ -96,6 +110,8 @@ namespace Echoes.Narrative
         /// <summary>Speaks one line and returns when it has been said and could be read.</summary>
         public IEnumerator Say(Line line)
         {
+            // The dead don't talk (owner: the gas station clerk kept talking after he shot her).
+            if (IsDead(line)) yield break;
             var p = Speakers.Get(line.who);
             var ch = line.channel ?? p.channel;
             float glitch = line.glitch ?? p.glitch;
@@ -118,6 +134,7 @@ namespace Echoes.Narrative
             {
                 for (int s = 0; s < w.syllables; s++)
                 {
+                    if (IsDead(line)) { CutOff(); yield break; } // killed mid-sentence
                     float progress = k / (float)Mathf.Max(1, total - 1);
                     float pitch = Mathf.Lerp(1.05f, 0.95f, progress) * Random.Range(0.96f, 1.04f);
                     if (question && k >= total - 2) pitch *= 1.12f;
@@ -141,9 +158,19 @@ namespace Echoes.Narrative
                 yield return new WaitForSeconds(w.pauseAfter);
             }
             IsSpeaking = false;
-            float left = shown - 0.4f - (Time.time - start);
-            if (left > 0f) yield return new WaitForSeconds(left);
+            float until = start + shown - 0.4f;
+            while (Time.time < until)
+            {
+                if (IsDead(line)) { CutOff(); yield break; }
+                yield return null;
+            }
             yield return new WaitForSeconds(line.pause);
+        }
+
+        void CutOff()
+        {
+            IsSpeaking = false;
+            if (BodycamHUD.Instance != null) BodycamHUD.Instance.ShowSubtitle("", 0f);
         }
 
         void Voice(AudioManager am, SoundId id, int variation, LineChannel ch, Transform source, float loud, float pitch)

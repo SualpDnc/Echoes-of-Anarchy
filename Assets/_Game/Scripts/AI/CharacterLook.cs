@@ -27,10 +27,16 @@ namespace Echoes.AI
         public HeadKind head;
         public HairKind hair;
         public bool shortSleeves, gloves, hoodUp;
-        /// <summary>Seen at arm's length (Luis in the cab): a denser, more detailed face. Costs more vertices.</summary>
+        /// <summary>
+        /// The detailed face (iris and lids, lips, nostrils, stubble, shaped ears). Dress() turns it on for every bare or
+        /// half-covered face: the owner asked for every character as realistic as possible. Costs more vertices.
+        /// </summary>
         public bool closeUp;
 
         public Color skinTone, ledColor;
+        public Color irisColor = new Color(0.16f, 0.09f, 0.04f);
+        /// <summary>Extra bone structure and folds on a detailed face, 0..1 (Luis: 1). Costs a denser skull.</summary>
+        public float definition;
         public Material skin, lips, topMat, innerMat, accentMat, pantsMat, shoeMat, soleMat, gloveMat, hairMat, beltMat;
 
         public static CharacterLook Random(Faction f, System.Random rng)
@@ -88,7 +94,14 @@ namespace Echoes.AI
             Color[] skins = { new Color(0.45f, 0.3f, 0.22f), new Color(0.3f, 0.19f, 0.13f), new Color(0.6f, 0.43f, 0.33f), new Color(0.18f, 0.11f, 0.08f) };
             skinTone = Of(rng, skins);
             skin = M(skinTone, 0.38f, Fabric.Skin);
-            lips = M(new Color(skinTone.r * 0.8f, skinTone.g * 0.55f, skinTone.b * 0.55f), 0.45f, Fabric.Skin);
+            lips = feminine ? M(new Color(skinTone.r * 0.85f + 0.04f, skinTone.g * 0.45f, skinTone.b * 0.48f), 0.55f, Fabric.Skin)
+                            : M(new Color(skinTone.r * 0.8f, skinTone.g * 0.55f, skinTone.b * 0.55f), 0.45f, Fabric.Skin);
+            // Every face that shows gets the detailed build. No rng draws here: adding one would change every look
+            // rolled after this one (the gas station's looters and clerk come from one shared rng).
+            if (head == HeadKind.Face || head == HeadKind.Hood) closeUp = true;
+            irisColor = skinTone.r > 0.55f ? new Color(0.1f, 0.13f, 0.16f)   // the lightest skin: grey-blue eyes
+                      : skinTone.r > 0.4f ? new Color(0.13f, 0.1f, 0.05f)   // hazel
+                      : new Color(0.1f, 0.055f, 0.025f);                    // brown
             Color[] leds = { new Color(0.2f, 1f, 1f), new Color(1f, 0.15f, 0.6f), new Color(1f, 1f, 1f), new Color(0.4f, 1f, 0.3f) };
             ledColor = Of(rng, leds);
 

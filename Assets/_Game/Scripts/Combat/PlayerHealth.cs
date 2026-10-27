@@ -143,6 +143,7 @@ namespace Echoes.Combat
             }
             if (hud != null) hud.ShowCenter("NO SIGNAL", 10f);
             yield return new WaitForSeconds(2.5f);
+            Core.Checkpoint.ReloadAfterDeath(); // back to the last checkpoint, not the ambulance ride (owner)
             SceneManager.LoadScene(SceneManager.GetActiveScene().buildIndex);
         }
     }

@@ -69,6 +69,8 @@ namespace Echoes.UI
             promptText.rectTransform.sizeDelta = new Vector2(900, 60);
 
             gameObject.AddComponent<DamageNumbers>();
+            gameObject.AddComponent<StreamOverlay>();
+            gameObject.AddComponent<QuitKey>();
         }
 
         RawImage FullScreenRaw(string name, Texture tex, float alpha)
@@ -194,6 +196,31 @@ namespace Echoes.UI
         Text cardText;
 
         /// <summary>Full-screen text over the black (the intro): rich text, centred, faded by alpha. Empty hides it.</summary>
+        RawImage inspectImg;
+
+        /// <summary>An object held up to the camera (a photo): centred, filling about half the screen height. Alpha 0 hides it.</summary>
+        public void ShowInspect(Texture tex, float alpha)
+        {
+            if (inspectImg == null)
+            {
+                var go = new GameObject("Inspect", typeof(RectTransform), typeof(RawImage));
+                go.transform.SetParent(transform, false);
+                var rt = (RectTransform)go.transform;
+                rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
+                rt.anchoredPosition = new Vector2(0f, 40f);
+                rt.localRotation = Quaternion.Euler(0f, 0f, 3f);
+                inspectImg = go.GetComponent<RawImage>();
+                inspectImg.raycastTarget = false;
+            }
+            if (tex != null)
+            {
+                inspectImg.texture = tex;
+                ((RectTransform)inspectImg.transform).sizeDelta = new Vector2(520f * tex.width / tex.height, 520f);
+            }
+            inspectImg.color = new Color(1f, 1f, 1f, Mathf.Clamp01(alpha));
+            inspectImg.enabled = alpha > 0.001f;
+        }
+
         public void SetCard(string richText, float alpha)
         {
             if (cardText == null)

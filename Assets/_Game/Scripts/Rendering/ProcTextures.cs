@@ -248,6 +248,82 @@ namespace Echoes.Rendering
             return tex;
         }
 
+        static Texture2D marinePhoto;
+
+        /// <summary>
+        /// Daniel's boot-camp portrait, the kind that hangs framed in a family home: rendered in 3D by MarinePortrait
+        /// (owner: the drawn one didn't look real), then printed: filmic tone, faded warm colour, grain, vignette, a gloss
+        /// glare, the white border, yellowing, a crease, worn corners and scratches. About a third of a second, once.
+        /// </summary>
+        public static Texture2D MarinePhoto()
+        {
+            if (marinePhoto != null) return marinePhoto;
+            const int w = 320, h = 400, border = 14;
+            int iw = w - 2 * border, ih = h - 2 * border;
+            // The picture itself: a lit 3D portrait (MarinePortrait), then printed and aged on Mia's wall.
+            var img = MarinePortrait.Render(iw, ih);
+            var soft = new Color[img.Length];
+            for (int y = 0; y < ih; y++)
+            for (int x = 0; x < iw; x++)
+            {
+                // A touch of lens softness (also smooths the ray-marched edges).
+                Color s = img[y * iw + x] * 4f;
+                int n = 4;
+                for (int k = 0; k < 4; k++)
+                {
+                    int xx = Mathf.Clamp(x + (k == 0 ? 1 : k == 1 ? -1 : 0), 0, iw - 1), yy = Mathf.Clamp(y + (k == 2 ? 1 : k == 3 ? -1 : 0), 0, ih - 1);
+                    s += img[yy * iw + xx];
+                    n++;
+                }
+                soft[y * iw + x] = s / n;
+            }
+
+            var tex = NewTex(w, h, TextureFormat.RGBA32, TextureWrapMode.Clamp, "MarinePhoto", true);
+            var px = new Color32[w * h];
+            var paper = new Color(0.92f, 0.9f, 0.84f);
+            for (int y = 0; y < h; y++)
+            for (int x = 0; x < w; x++)
+            {
+                Color c;
+                bool inside = x >= border && x < w - border && y >= border && y < h - border;
+                if (!inside)
+                {
+                    c = paper * (0.94f + 0.06f * MarinePortrait.Hash(x, y, 3));
+                }
+                else
+                {
+                    float u = (x - border) / (float)iw, v = (y - border) / (float)ih;
+                    Color l = soft[(y - border) * iw + (x - border)];
+                    // Filmic shoulder, then sRGB, then the print's fade: lifted blacks, warm, a little less saturated.
+                    l = new Color(l.r / (1f + l.r), l.g / (1f + l.g), l.b / (1f + l.b)) * 1.35f;
+                    c = new Color(Mathf.Pow(Mathf.Clamp01(l.r), 1f / 2.2f), Mathf.Pow(Mathf.Clamp01(l.g), 1f / 2.2f), Mathf.Pow(Mathf.Clamp01(l.b), 1f / 2.2f));
+                    float grey = c.r * 0.3f + c.g * 0.59f + c.b * 0.11f;
+                    c = Color.Lerp(new Color(grey, grey, grey), c, 0.82f);
+                    c = new Color(0.07f, 0.055f, 0.04f) + c * 0.9f;
+                    c = new Color(c.r * 1.04f, c.g * 0.99f, c.b * 0.88f);
+                    // Grain, a vignette, and the gloss catching the room light across the top.
+                    c *= 0.96f + 0.08f * MarinePortrait.Hash(x, y, 11);
+                    float vig = 1f - 0.4f * Mathf.Pow(Mathf.Clamp01(Vector2.Distance(new Vector2(u, v), new Vector2(0.5f, 0.55f)) * 1.35f), 2.2f);
+                    c *= vig;
+                    float glare = Mathf.Exp(-Mathf.Pow((u + v * 0.6f - 1.25f) / 0.12f, 2f)) * 0.07f;
+                    c += new Color(glare, glare, glare);
+                }
+                // Age over everything: yellowing, a crease across the lower corner, worn corners, a few scratches.
+                c = Color.Lerp(c, new Color(0.78f, 0.66f, 0.45f), 0.12f);
+                float crease = (x - y * 0.7f) - 150f;
+                if (Mathf.Abs(crease) < 1.4f) c *= 1.16f;
+                else if (crease > 1.4f && crease < 3.5f) c *= 0.93f;
+                int cx = Mathf.Min(x, w - 1 - x), cy = Mathf.Min(y, h - 1 - y);
+                if (cx + cy < 12 && MarinePortrait.Hash(x, y, 21) > 0.35f) c = Color.Lerp(c, paper, 0.7f);
+                if (MarinePortrait.Hash(x / 2, (int)(y * 0.08f + x * 0.5f), 31) > 0.9985f) c *= 1.2f;
+                c.a = 1f;
+                px[y * w + x] = c;
+            }
+            tex.SetPixels32(px);
+            tex.Apply(true, true);
+            return marinePhoto = tex;
+        }
+
         static Texture2D NewTex(int w, int h, TextureFormat fmt, TextureWrapMode wrap, string name, bool mips = false)
         {
             return new Texture2D(w, h, fmt, mips, false)
