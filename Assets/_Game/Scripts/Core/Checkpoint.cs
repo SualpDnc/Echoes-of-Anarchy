@@ -4,9 +4,9 @@ using UnityEngine;
 
 namespace Echoes.Core
 {
-    /// <summary>The places the demo restarts from after a death, in story order (Alleys = behind the gas station, House = out of the back gate after the raid).</summary>
+    /// <summary>The places the demo restarts from after a death, in story order (Alleys = behind the gas station, House = out of the back gate after the raid, Metro = down in the station, Party = up in the school yard behind the hoarding, Turret = on the pickup's gun).</summary>
     /// <remarks>Not serialized anywhere (only compared in order), so stages can be inserted.</remarks>
-    public enum CheckpointStage { None, CrashSite, GasStation, Alleys, House, School }
+    public enum CheckpointStage { None, CrashSite, GasStation, Alleys, House, Metro, Party, Turret, School }
 
     /// <summary>
     /// Where Daniel comes back after a death (owner: dying sent him back to the ambulance ride). DemoDirector saves at
@@ -59,6 +59,14 @@ namespace Echoes.Core
             Ledger.Restore(ledger);
             StoryState.Restore(story);
             return true;
+        }
+
+        /// <summary>A fresh start in the same launch (after the end, or a restart before any checkpoint): no checkpoint, an empty Ledger, the story as at the start.</summary>
+        public static void NewGame()
+        {
+            ResetOnPlay();
+            Ledger.ResetOnPlay();
+            StoryState.ResetOnPlay();
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]

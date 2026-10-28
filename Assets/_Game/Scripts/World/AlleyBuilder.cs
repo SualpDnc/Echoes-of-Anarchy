@@ -188,27 +188,25 @@ namespace Echoes.World
         {
             var s = new Solid();
             float cx = (YardX0 + YardX1) / 2f, cz = (YardZ0 + YardZ1) / 2f;
-            s.mb.Box(pal.asphalt, new Vector3(cx, y + 0.006f, cz), new Vector3(YardX1 - YardX0, 0.012f, YardZ1 - YardZ0), 0b000100);
+            // The asphalt, in three pieces round the subway exit's stairwell (8c, MetroBuilder).
+            float ex0 = MetroBuilder.EX0, ex1 = MetroBuilder.EX1, ez = MetroBuilder.BZTop;
+            s.mb.Box(pal.asphalt, new Vector3((YardX0 + ex0) / 2f, y + 0.006f, cz), new Vector3(ex0 - YardX0, 0.012f, YardZ1 - YardZ0), 0b000100);
+            s.mb.Box(pal.asphalt, new Vector3((ex1 + YardX1) / 2f, y + 0.006f, cz), new Vector3(YardX1 - ex1, 0.012f, YardZ1 - YardZ0), 0b000100);
+            s.mb.Box(pal.asphalt, new Vector3((ex0 + ex1) / 2f, y + 0.006f, (ez + YardZ1) / 2f), new Vector3(ex1 - ex0, 0.012f, YardZ1 - ez), 0b000100);
             // Faded court lines and a hopscotch.
             const float ly = 0.014f;
             void Line(float x, float z, float sx, float sz) => s.mb.Box(pal.roadPaintWhite, new Vector3(x, y + ly, z), new Vector3(sx, 0.004f, sz), 0b000100);
             Line(-77f, cz, 0.08f, 10f); Line(-93f, cz, 0.08f, 10f);
             Line(-85f, cz - 5f, 16f, 0.08f); Line(-85f, cz + 5f, 16f, 0.08f); Line(-85f, cz, 0.08f, 10f);
-            for (int i = 0; i < 6; i++) Line(-97.5f, -19f + i * 0.6f, 0.55f, 0.04f);
+            for (int i = 0; i < 6; i++) Line(-91f, -19f + i * 0.6f, 0.55f, 0.04f);
 
-            // Basketball hoop, a flagpole with no flag, a bench.
-            s.Box(pal.galvanized, new Vector3(-74.2f, y + 1.6f, cz), new Vector3(0.12f, 3.2f, 0.12f));
-            s.mb.Box(pal.trimStone, new Vector3(-74.6f, y + 3.3f, cz), new Vector3(0.05f, 1.05f, 1.8f));
-            s.mb.Cylinder(pal.rustyMetal, new Vector3(-75.1f, y + 3.05f, cz), 0.23f, 0.02f, 16, false);
-            s.Box(pal.galvanized, new Vector3(-98.5f, y + 4f, -20.5f), new Vector3(0.1f, 8f, 0.1f));
-            s.Box(pal.boards, new Vector3(-90f, y + 0.45f, YardZ1 - 1.2f), new Vector3(2.2f, 0.08f, 0.45f));
-            s.Box(pal.metalDark, new Vector3(-90f, y + 0.22f, YardZ1 - 1.2f), new Vector3(2f, 0.44f, 0.3f), false);
+            // A flagpole with no flag. (8d: the hoop and the bench made way for the party's stage and VIP strip, PartyBuilder.)
+            s.Box(pal.galvanized, new Vector3(-99.5f, y + 4f, -8f), new Vector3(0.1f, 8f, 0.1f)); // clear of the subway exit
             // A board over the door bays where a school sign was (the name is 6e's problem).
             s.mb.Box(pal.signBand, new Vector3(cx, y + 4.9f, YardZ1 - 0.12f), new Vector3(9f, 0.8f, 0.12f));
             s.Build("SchoolYard", root);
 
-            // The yard gate at the end of the back alley: a palisade leaf swung in.
-            Palisade(pal, root, y, new Vector3(BackAlleyX0, 0f, YardZ0 + 0.1f), new Vector3(BackAlleyX0 + 0.6f, 0f, YardZ0 + 2.2f), 2.2f, false);
+            // The yard gate at the end of the back alley is PartySequence's (8d): chained shut, until the ram truck.
         }
 
         // ------------------------------------------------------------------ clutter

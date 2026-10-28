@@ -345,6 +345,62 @@ namespace Echoes.Rendering
             return miaNote = tex;
         }
 
+        static Texture2D phoneScreen;
+
+        /// <summary>
+        /// The screen of the phone in Mia's closet (8b): a voice memo playing on repeat. Title, file name, a waveform,
+        /// the elapsed time and a red REPEAT badge. Used as the screen's emission and held up to the lens.
+        /// </summary>
+        public static Texture2D PhoneScreen()
+        {
+            if (phoneScreen != null) return phoneScreen;
+            const int w = 180, h = 340;
+            var px = new Color[w * h];
+            for (int i = 0; i < px.Length; i++) px[i] = new Color(0.02f, 0.025f, 0.035f);
+            void Fill(int x0, int y0, int x1, int y1, Color c)
+            {
+                for (int y = Mathf.Max(0, y0); y < Mathf.Min(h, y1); y++)
+                for (int x = Mathf.Max(0, x0); x < Mathf.Min(w, x1); x++) px[y * w + x] = c;
+            }
+            void Text(string s, int cx, int top, int cell, Color c)
+            {
+                var m = PixelFont.Mask(s, false, cell, 3, out int tw, out int th);
+                int ox = cx - tw / 2, oy = top - th;
+                for (int y = 0; y < th; y++)
+                for (int x = 0; x < tw; x++)
+                {
+                    int xx = ox + x, yy = oy + y;
+                    if (xx < 0 || yy < 0 || xx >= w || yy >= h) continue;
+                    px[yy * w + xx] = Color.Lerp(px[yy * w + xx], c, m[y * tw + x]);
+                }
+            }
+            var white = new Color(0.92f, 0.94f, 0.98f);
+            var dim = new Color(0.5f, 0.55f, 0.62f);
+            Fill(0, h - 22, w, h, new Color(0.06f, 0.07f, 0.09f));
+            Text("21:14", w / 2, h - 4, 2, dim);
+            Text("VOICE MEMO", w / 2, h - 40, 2, white);
+            Text("MIA - DOOR", w / 2, h - 70, 2, new Color(1f, 0.68f, 0.82f));
+            // The waveform: bars of a recorded voice, the played part brighter.
+            var rng = new System.Random(14);
+            int mid = h / 2 + 10;
+            for (int x = 14; x < w - 14; x += 4)
+            {
+                float a = (float)(0.25 + 0.75 * rng.NextDouble()) * (0.5f + 0.5f * Mathf.Sin(x * 0.11f));
+                int hh = Mathf.Max(2, Mathf.RoundToInt(a * 46f));
+                Fill(x, mid - hh, x + 3, mid + hh, x < w * 0.62f ? new Color(0.45f, 0.75f, 1f) : new Color(0.2f, 0.28f, 0.38f));
+            }
+            Fill((int)(w * 0.62f), mid - 56, (int)(w * 0.62f) + 2, mid + 56, white);        // the play head
+            Text("00:09 / 00:14", w / 2, mid - 66, 2, dim);
+            Fill(w / 2 - 50, 52, w / 2 + 50, 84, new Color(0.7f, 0.08f, 0.08f));         // REPEAT badge
+            Text("REPEAT ON", w / 2, 78, 2, white);
+            var tex = NewTex(w, h, TextureFormat.RGBA32, TextureWrapMode.Clamp, "PhoneScreen", true);
+            var c32 = new Color32[px.Length];
+            for (int i = 0; i < px.Length; i++) c32[i] = px[i];
+            tex.SetPixels32(c32);
+            tex.Apply(true, true);
+            return phoneScreen = tex;
+        }
+
         /// <summary>A touch of lens softness (also smooths the ray-marched edges).</summary>
         static Color[] Soften(Color[] img, int iw, int ih)
         {

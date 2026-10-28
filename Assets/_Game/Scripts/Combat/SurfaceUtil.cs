@@ -9,6 +9,7 @@ namespace Echoes.Combat
     {
         public static SurfaceKind Classify(RaycastHit hit)
         {
+            if (hit.collider.GetComponentInParent<Armored>() != null) return SurfaceKind.Metal; // plates, not flesh: sparks
             if (hit.collider.GetComponent<Hitbox>() != null || hit.collider.GetComponentInParent<Health>() != null && hit.collider.GetComponent<CharacterController>() == null)
                 return SurfaceKind.Flesh;
             string n = MaterialName(hit);

@@ -65,7 +65,7 @@ namespace Echoes.World
             // UV origins use world position so adjacent boxes line up.
             if ((faceMask & 1) != 0) Quad(m, p1, p2, p6, p5, new Vector2(p1.z, p1.y), new Vector2(p6.z, p6.y));            // +X
             if ((faceMask & 2) != 0) Quad(m, p3, p0, p4, p7, new Vector2(-p3.z, p3.y), new Vector2(-p4.z, p4.y));          // -X
-            if ((faceMask & 4) != 0) Quad(topMat ?? m, p4, p5, p6, p7, new Vector2(p4.x, p4.z), new Vector2(p6.x, p6.z));  // +Y
+            if ((faceMask & 4) != 0) Quad(topMat != null ? topMat : m, p4, p5, p6, p7, new Vector2(p4.x, p4.z), new Vector2(p6.x, p6.z));  // +Y
             if ((faceMask & 8) != 0) Quad(m, p3, p2, p1, p0, new Vector2(p3.x, -p3.z), new Vector2(p1.x, -p1.z));          // -Y
             if ((faceMask & 16) != 0) Quad(m, p2, p3, p7, p6, new Vector2(-p2.x, p2.y), new Vector2(-p7.x, p7.y));         // +Z
             if ((faceMask & 32) != 0) Quad(m, p0, p1, p5, p4, new Vector2(p0.x, p0.y), new Vector2(p5.x, p5.y));           // -Z
@@ -94,8 +94,8 @@ namespace Echoes.World
                 SmoothQuad(m, b0, b1, t1, t0, d0, d1, new Vector2(u0, 0f), new Vector2(u1, height));
                 if (caps)
                 {
-                    Tri(capMat ?? m, baseCenter + Vector3.up * height, t1, t0);
-                    Tri(capMat ?? m, baseCenter, b0, b1);
+                    Tri(capMat != null ? capMat : m, baseCenter + Vector3.up * height, t1, t0);
+                    Tri(capMat != null ? capMat : m, baseCenter, b0, b1);
                 }
             }
         }

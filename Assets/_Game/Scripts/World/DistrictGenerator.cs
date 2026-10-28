@@ -66,12 +66,19 @@ namespace Echoes.World
             AlleyBuilder.Build(pal, fx, props, new System.Random(seed + 404));
             // Daniel's house on the lot the alleys leave across from the gate alley (8b); own rng too.
             HouseBuilder.Build(pal, props, new System.Random(seed + 505));
+            // The dead subway station under the back alley and the school yard (8c); own rng.
+            MetroBuilder.Build(pal, fx, props, new System.Random(seed + 606));
+            // The Purge party in the school yard (8d): no randomness.
+            PartyBuilder.Build(pal, fx, props);
 
             for (float z = -85f; z <= 95f; z += 30f) res.probePoints.Add(new Vector3(0f, 2.5f, z));
             res.probePoints.Add(new Vector3(-64f, 2.5f, -60f));
             res.probePoints.Add(new Vector3(-71f, HouseBuilder.F0 + 1.5f, -60.5f));
             res.probePoints.Add(new Vector3(-71f, HouseBuilder.F1 + 1.4f, -66.5f));
             res.probePoints.Add(new Vector3(-76f, HouseBuilder.F0 + 1.5f, -64f));
+            res.probePoints.Add(new Vector3(-82f, MetroBuilder.FL + 2f, -44f));
+            res.probePoints.Add(new Vector3(-100f, MetroBuilder.FL + 2f, -37f));
+            res.probePoints.Add(new Vector3(-80f, MetroBuilder.FL + 2f, -27f));
             res.probePoints.Add(new Vector3(-82f, 2.5f, -36f));
             res.probePoints.Add(new Vector3(-86f, 3f, -14f));
             res.probePoints.Add(new Vector3(-50f, 2.5f, CrossZ));
@@ -94,7 +101,8 @@ namespace Echoes.World
             // Raised blocks: curb-faced sides, sidewalk top.
             void Block(float x0, float x1, float z0, float z1) =>
                 mb.Box(pal.curb, new Vector3((x0 + x1) / 2f, Curb / 2f - 0.05f, (z0 + z1) / 2f), new Vector3(x1 - x0, Curb + 0.1f, z1 - z0), 0b111111, pal.sidewalk);
-            Block(-E - 15f, -RoadHalf, -E - 15f, CrossZ - CrossHalf);
+            // The south-west block has the subway's two stairwells cut out of it (8c).
+            foreach (var r in Without(-E - 15f, -RoadHalf, -E - 15f, CrossZ - CrossHalf, MetroBuilder.Holes)) Block(r.x, r.y, r.z, r.w);
             Block(-E - 15f, -RoadHalf, CrossZ + CrossHalf, E + 15f);
             Block(RoadHalf, E + 15f, -E - 15f, CrossZ - CrossHalf);
             Block(RoadHalf, E + 15f, CrossZ + CrossHalf, E + 15f);
@@ -108,9 +116,48 @@ namespace Echoes.World
 
             // Dirt fill to the horizon, just under road level.
             var fill = new MeshBuilder();
-            fill.Box(pal.dirt, new Vector3(0f, -0.52f, 0f), new Vector3(600f, 1f, 600f), 0b000100);
+            foreach (var r in Without(-300f, 300f, -300f, 300f, MetroBuilder.Holes))
+                fill.Box(pal.dirt, new Vector3((r.x + r.y) / 2f, -0.52f, (r.z + r.w) / 2f), new Vector3(r.y - r.x, 1f, r.w - r.z), 0b000100);
             var f = fill.Build("GroundFill", root);
             f.isStatic = true;
+        }
+
+        /// <summary>
+        /// The rectangle [x0, x1] × [z0, z1] minus the holes (each x0, x1, z0, z1), as rectangles: a grid on every
+        /// edge, merged along Z within each column. Used to cut the subway's stairwells out of the ground.
+        /// </summary>
+        static List<Vector4> Without(float x0, float x1, float z0, float z1, Vector4[] holes)
+        {
+            var xs = new List<float> { x0, x1 };
+            var zs = new List<float> { z0, z1 };
+            foreach (var h in holes)
+            {
+                if (h.x > x0 && h.x < x1) xs.Add(h.x);
+                if (h.y > x0 && h.y < x1) xs.Add(h.y);
+                if (h.z > z0 && h.z < z1) zs.Add(h.z);
+                if (h.w > z0 && h.w < z1) zs.Add(h.w);
+            }
+            xs.Sort();
+            zs.Sort();
+            bool InHole(float x, float z)
+            {
+                foreach (var h in holes) if (x > h.x && x < h.y && z > h.z && z < h.w) return true;
+                return false;
+            }
+            var result = new List<Vector4>();
+            for (int i = 0; i < xs.Count - 1; i++)
+            {
+                if (xs[i + 1] - xs[i] < 1e-4f) continue;
+                float cx = (xs[i] + xs[i + 1]) / 2f, start = float.NaN;
+                for (int j = 0; j < zs.Count - 1; j++)
+                {
+                    bool solid = !InHole(cx, (zs[j] + zs[j + 1]) / 2f) && zs[j + 1] - zs[j] > 1e-4f;
+                    if (solid && float.IsNaN(start)) start = zs[j];
+                    if (!solid && !float.IsNaN(start)) { result.Add(new Vector4(xs[i], xs[i + 1], start, zs[j])); start = float.NaN; }
+                }
+                if (!float.IsNaN(start)) result.Add(new Vector4(xs[i], xs[i + 1], start, zs[zs.Count - 1]));
+            }
+            return result;
         }
 
         static void BuildMarkings(Palette pal, Transform root)

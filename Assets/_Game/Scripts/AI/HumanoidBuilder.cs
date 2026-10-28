@@ -2,6 +2,7 @@ using System;
 using UnityEngine;
 using UnityEngine.Rendering;
 using Echoes.Combat;
+using Echoes.Rendering;
 
 namespace Echoes.AI
 {
@@ -80,6 +81,7 @@ namespace Echoes.AI
                 Shoe(mb, look, side * 0.1f, Skin.On(side < 0 ? Bone.FootL : Bone.FootR));
             }
             OutfitDetails.Add(mb, look, torso, legs, TorsoSkin, LegSkin(-1), LegSkin(1));
+            if (look.armor) Armour(mb, look);
             MaskFactory.Head(mb, look, rng);
             mb.ScaleVertices(s);
 
@@ -330,6 +332,29 @@ namespace Echoes.AI
                  .Add(0.205f, 0.02f * w, sole, sole, 3f, 0f, -sole);
             mb.Tube(soleP, 14, 0.03f, _ => skin);
             mb.matrix = Matrix4x4.identity;
+        }
+
+        /// <summary>
+        /// Bullet-proof plates over the suit (8c, the blind Smiler): a front and a back plate on the chest with straps,
+        /// a plated belt, shoulder plates and a raised collar. Dull gunmetal, scuffed.
+        /// </summary>
+        static void Armour(SkinnedBodyBuilder mb, CharacterLook look)
+        {
+            var steel = RuntimeMaterials.Lit(new Color(0.12f, 0.12f, 0.13f), 0.45f, 0.85f);
+            var strap = RuntimeMaterials.Fabric(new Color(0.06f, 0.06f, 0.06f), 0.2f, Fabric.Cotton);
+            var chest = Skin.On(Bone.Chest);
+            float fz = 0.112f * look.bulk + 0.03f, bz = 0.1f * look.bulk + 0.03f, w = 0.17f * look.bulk;
+            mb.Box(steel, new Vector3(0f, 1.3f, fz), new Vector3(w * 1.6f, 0.34f, 0.028f), Quaternion.Euler(-6f, 0f, 0f), chest);
+            mb.Box(steel, new Vector3(0f, 1.3f, -bz), new Vector3(w * 1.6f, 0.36f, 0.028f), Quaternion.Euler(6f, 0f, 0f), chest);
+            foreach (float s in new[] { -1f, 1f })
+            {
+                mb.Box(strap, new Vector3(s * w * 0.55f, 1.46f, 0f), new Vector3(0.05f, 0.03f, fz + bz), Quaternion.identity, chest);
+                mb.Box(strap, new Vector3(s * w * 0.95f, 1.24f, 0f), new Vector3(0.03f, 0.06f, fz + bz - 0.02f), Quaternion.identity, chest);
+                mb.Ellipsoid(steel, new Vector3(s * (0.185f + 0.03f), 1.5f, 0f), new Vector3(0.085f, 0.05f, 0.095f), Quaternion.Euler(0f, 0f, s * -18f), _ => chest, 8, 12);
+            }
+            // Plated belt over the waist (spine bone), and a raised collar round the neck.
+            mb.Torus(steel, new Vector3(0f, 1.06f, 0f), Quaternion.identity, 0.16f * look.bulk, 0.035f, Skin.On(Bone.Spine), 24, 6);
+            mb.Torus(steel, new Vector3(0f, 1.56f, 0f), Quaternion.identity, 0.075f, 0.028f, chest, 20, 6);
         }
 
         // ------------------------------------------------------------------ physics

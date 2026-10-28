@@ -106,6 +106,7 @@ namespace Echoes.Combat
                 case SurfaceKind.Metal:
                     fx.Emit(fx.sparks, hit.point, Vector3.Lerp(n, reflect, 0.6f), 12);
                     Sound(SoundId.ImpactMetal, hit.point, 0.8f);
+                    if (hit.collider.GetComponentInParent<Armored>() != null) return; // armour on a moving man: no bullet hole left hanging in the air
                     break;
                 case SurfaceKind.Glass:
                     fx.Emit(fx.glass, hit.point, n, 16);

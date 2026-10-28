@@ -28,7 +28,7 @@ namespace Echoes.Core
         }
 
         [RuntimeInitializeOnLoadMethod(RuntimeInitializeLoadType.SubsystemRegistration)]
-        static void ResetOnPlay()
+        internal static void ResetOnPlay()
         {
             LuisAlive = true;
             HasLuisRadio = false;

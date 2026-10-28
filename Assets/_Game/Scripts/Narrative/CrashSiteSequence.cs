@@ -168,25 +168,25 @@ namespace Echoes.Narrative
 
         /// <summary>
         /// Until Luis has said his piece, Daniel can't walk off (owner: you could leave before he finished): an invisible
-        /// tether round Luis, with Daniel saying why. The wake point and the spilled kits lie well inside it.
+        /// tether round Luis, with Daniel saying why. Before they talk it is wide (the wake point and the spilled kits lie
+        /// inside it); once Luis starts talking it is a couple of steps (owner: stay right beside him while he talks).
         /// </summary>
         IEnumerator StayNearLuis()
         {
-            const float radius = 11f;
             var hud = BodycamHUD.Instance;
             float nextLine = 0f;
             while (site.Luis != null && !luisChoiceOffered && !LuisTreated && !LuisDead)
             {
                 Vector3 c = site.Luis.transform.position, p = player.transform.position;
                 Vector3 off = new Vector3(p.x - c.x, 0f, p.z - c.z);
-                float dist = off.magnitude;
+                float dist = off.magnitude, radius = metLuis ? 3.4f : 11f; // 3.4: where the talk starts, so it never yanks him
                 if (dist > radius && body.enabled && body.Controller.enabled)
                 {
                     body.Controller.Move(-off / dist * (dist - radius));
                     if (Time.time > nextLine)
                     {
                         nextLine = Time.time + 8f;
-                        if (hud != null) hud.ShowHint("Luis is hurt. Go to him first.", 4f);
+                        if (hud != null) hud.ShowHint(metLuis ? "Stay with Luis while he talks." : "Luis is hurt. Go to him first.", 4f);
                         if (!talking) StartCoroutine(Speak(new[] { DemoLines.StayWithLuis }));
                     }
                 }

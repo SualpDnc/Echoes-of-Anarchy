@@ -53,6 +53,14 @@ namespace Echoes.Combat
         Vector3 supportRest;
         float flashTimer;
 
+        /// <summary>Put away and kept away (8d: while Daniel mans the pickup's machine gun).</summary>
+        public bool Stowed { get; set; }
+        /// <summary>Brings the gun up (8e: the choice in the gym).</summary>
+        public void Draw()
+        {
+            Stowed = false;
+            if (state == State.Holstered || state == State.Holstering) state = State.Drawing;
+        }
         public bool IsDrawn => state == State.Ready || state == State.Reloading;
         public bool IsBusy => state == State.Reloading || state == State.Drawing || state == State.Holstering;
         public bool IsAimingAt(Vector3 point, float coneDegrees)
@@ -169,6 +177,7 @@ namespace Echoes.Combat
         void HandleInput()
         {
             if (input.InputLocked) return;
+            if (Stowed) { if (state == State.Ready) state = State.Holstering; return; }
             if (input.HolsterPressed)
             {
                 if (state == State.Holstered) state = State.Drawing;

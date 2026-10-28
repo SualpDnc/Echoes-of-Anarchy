@@ -37,6 +37,8 @@ namespace Echoes.AI
         public Color irisColor = new Color(0.16f, 0.09f, 0.04f);
         /// <summary>Extra bone structure and folds on a detailed face, 0..1 (Luis: 1). Costs a denser skull.</summary>
         public float definition;
+        /// <summary>8c, the blind Smiler: a cloth band tied over the mask's eyes, and bullet-proof plates over the suit.</summary>
+        public bool blindfold, armor;
         public Material skin, lips, topMat, innerMat, accentMat, pantsMat, shoeMat, soleMat, gloveMat, hairMat, beltMat;
 
         public static CharacterLook Random(Faction f, System.Random rng)

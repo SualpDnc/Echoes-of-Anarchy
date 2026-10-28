@@ -174,6 +174,8 @@ namespace Echoes.Player
             bool want = crouchToggled || input.CrouchHeld;
             // Stay down while something is overhead.
             if (!want && Controller.height < standHeight - 0.01f && !HasHeadroom()) want = true;
+            // Duck under a low edge in the way (owner: going down the house stairs, his head hit the floor above).
+            if (!want && LowEdgeAhead()) want = true;
             IsCrouching = want;
 
             float targetH = want ? crouchHeight : standHeight;
@@ -182,6 +184,23 @@ namespace Echoes.Player
             Controller.height = h;
             Controller.center = new Vector3(0f, h * 0.5f, 0f);
             CrouchBlend = Mathf.InverseLerp(standHeight, crouchHeight, h);
+        }
+
+        /// <summary>Something at head height just ahead in the way he is moving, with room under it for a crouch.</summary>
+        bool LowEdgeAhead()
+        {
+            Vector3 v = new Vector3(velocity.x, 0f, velocity.z);
+            if (!IsGrounded || v.sqrMagnitude < 0.04f) return false;
+            float r = Controller.radius * 0.9f;
+            Vector3 ahead = transform.position + v.normalized * (Controller.radius + 0.35f);
+            return Blocked(ahead + Vector3.up * (standHeight - r + 0.05f), r) && !Blocked(ahead + Vector3.up * (crouchHeight - r + 0.05f), r);
+        }
+
+        bool Blocked(Vector3 p, float r)
+        {
+            foreach (var c in Physics.OverlapSphere(p, r, ~0, QueryTriggerInteraction.Ignore))
+                if (!c.transform.IsChildOf(transform)) return true;
+            return false;
         }
 
         bool HasHeadroom()

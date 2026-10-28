@@ -18,6 +18,7 @@ namespace Echoes.Audio
         {
             public float f0, formantScale, breath, glitch;
             public VoiceChannel channel;
+            public bool whisper; // no voicing: breath through the formants, said close to the mic
         }
 
         // Male formant frequencies (Hz) for a, e, i, o, u, schwa, æ.
@@ -29,10 +30,10 @@ namespace Echoes.Audio
 
         static IEnumerable<Recipe> VoiceRecipes()
         {
-            Recipe V(SoundId id, float f0, float scale, float breath, VoiceChannel ch, float glitch = 0f) => new Recipe
+            Recipe V(SoundId id, float f0, float scale, float breath, VoiceChannel ch, float glitch = 0f, bool whisper = false) => new Recipe
             {
                 id = id, variations = 24,
-                render = r => Syllable(r, new VoiceSpec { f0 = f0, formantScale = scale, breath = breath, channel = ch, glitch = glitch })
+                render = r => Syllable(r, new VoiceSpec { f0 = f0, formantScale = scale, breath = breath, channel = ch, glitch = glitch, whisper = whisper })
             };
             yield return V(SoundId.VoiceDaniel, 102f, 1.0f, 0.16f, VoiceChannel.Room);
             yield return V(SoundId.VoiceLuis, 124f, 1.03f, 0.17f, VoiceChannel.Room);
@@ -44,6 +45,10 @@ namespace Echoes.Audio
             yield return V(SoundId.VoiceSmiler, 108f, 0.97f, 0.04f, VoiceChannel.Muffled);
             yield return V(SoundId.VoiceHale, 94f, 0.98f, 0.15f, VoiceChannel.Room);
             yield return V(SoundId.VoiceLuisRadio, 124f, 1.03f, 0.1f, VoiceChannel.Radio); // Luis on the handheld he gave Daniel
+            // Daniel thinking (owner: his inner voice should be a whisper, plainly not said out loud): unvoiced, close, dry.
+            yield return V(SoundId.VoiceDanielThought, 102f, 1.0f, 0f, VoiceChannel.Direct, 0f, true);
+            // Vance on the phone (8c): low, slow, a smoker's breath in it.
+            yield return V(SoundId.VoiceVance, 88f, 0.95f, 0.2f, VoiceChannel.Phone);
             yield return new Recipe { id = SoundId.PhoneRing, render = PhoneRing };
             yield return new Recipe { id = SoundId.PhonePickup, render = PhonePickup };
             yield return new Recipe { id = SoundId.PhoneHangup, render = PhoneHangup };
@@ -99,7 +104,7 @@ namespace Echoes.Audio
                     for (int k = 0; k < 3; k++)
                     {
                         float f = Lerp(Vowels[va, k], Vowels[vb, k], glide) * fs;
-                        bp[k].SetBandPass(f, f / (bws[k] * fs));
+                        bp[k].SetBandPass(f, f / (bws[k] * fs * (v.whisper ? 2.4f : 1f))); // whispered formants are broad, or they whistle
                     }
                     jitter = Range(r, -jitAmt, jitAmt);
                 }
@@ -117,7 +122,7 @@ namespace Echoes.Audio
                 prevG = g;
                 float vEnv = tv < 0f ? 0f : Math.Min(1f, tv / 0.014f) * Math.Min(1f, (vowelLen - tv) / 0.04f + 0.0001f);
                 vEnv = Math.Max(0f, vEnv);
-                float excite = src * vEnv + White(r) * v.breath * vEnv;
+                float excite = v.whisper ? White(r) * vEnv * 0.9f : src * vEnv + White(r) * v.breath * vEnv;
                 if (consonant == 5 && tv < 0f) excite += White(r) * 0.25f * Math.Min(1f, t / 0.02f);
 
                 float y = 0f;
@@ -133,7 +138,7 @@ namespace Echoes.Audio
                         case 1: y += burst.Process(White(r)) * Env(t - 0.016f, 0.001f, 0.007f) * 0.9f; break;
                         case 2: y += fricS.Process(White(r)) * ce * 0.3f; break;
                         case 3: y += fricSh.Process(White(r)) * ce * 0.35f; break;
-                        case 4: y += nasalLp.Process(src) * ce * 2.2f; break;
+                        case 4: y += nasalLp.Process(v.whisper ? White(r) * 0.3f : src) * ce * 2.2f; break;
                     }
                 }
                 buf[i] = y;

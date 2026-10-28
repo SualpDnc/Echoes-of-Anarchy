@@ -16,7 +16,8 @@ namespace Echoes.Audio
         PhoneRing, PhonePickup, PhoneHangup, VoicemailBeep, RadioSquelch,
         EngineDiesel, EngineTruck, CarHorn, CrashImpact, MetalScrape, TireScreech, Tinnitus, TapeSkip,
         VoiceLuisRadio, MagDrop, MagPouch, MagSeat, ImpactHead, FireworkLaunch, FireworkBurst,
-        MusicBox, DoorSlam
+        MusicBox, DoorSlam, VoiceDanielThought, GateScreech, ArmorHum, VoiceVance,
+        PartyMusic, CrowdWalla, CrowdRoar, MachineGun
     }
 
     /// <summary>
@@ -86,6 +87,12 @@ namespace Echoes.Audio
                 new Recipe { id = SoundId.FireworkBurst, render = FireworkBurst },
                 new Recipe { id = SoundId.MusicBox, render = MusicBox },
                 new Recipe { id = SoundId.DoorSlam, variations = 2, render = DoorSlam },
+                new Recipe { id = SoundId.GateScreech, variations = 2, render = GateScreech },
+                new Recipe { id = SoundId.ArmorHum, render = ArmorHum },
+                new Recipe { id = SoundId.PartyMusic, render = PartyMusic },
+                new Recipe { id = SoundId.CrowdWalla, render = CrowdWalla },
+                new Recipe { id = SoundId.CrowdRoar, render = CrowdRoar },
+                new Recipe { id = SoundId.MachineGun, variations = 4, render = MachineGun },
             };
             all.AddRange(VoiceRecipes());
             all.AddRange(VehicleRecipes());

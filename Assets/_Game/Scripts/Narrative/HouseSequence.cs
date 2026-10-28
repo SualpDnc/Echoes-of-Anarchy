@@ -26,9 +26,9 @@ namespace Echoes.Narrative
         public bool Done { get; private set; }
 
         GameObject player;
-        Transform phone, closetL, closetR, danielDoor, photo, note;
+        Transform phone, closetL, closetR, danielDoor, photo, note, backGate;
         Light phoneLight;
-        bool built, talking, closetOpen, phoneTaken, bedSeen, raiding;
+        bool built, talking, closetOpen, phoneTaken, bedSeen, raiding, backGateOpen;
         readonly List<NPCBrain> hunters = new List<NPCBrain>();
         VehicleRig truck;
 
@@ -45,6 +45,7 @@ namespace Echoes.Narrative
             MiasRoom(root);
             ClosetAndPhone(root);
             BedClues(root);
+            Entrance(root);
         }
 
         /// <summary>The scene builder made the soft furniture from boxes; here it gets real fabric, plus the soft things that have no collider.</summary>
@@ -96,11 +97,44 @@ namespace Echoes.Narrative
             }
             float g = HouseBuilder.F0, u = HouseBuilder.F1, x1 = HouseBuilder.X1 - HouseBuilder.T / 2f, xm = HouseBuilder.XM;
             // Front door: hinged at its south edge, the leaf along +Z when shut (yaw −90), swung in.
-            Leaf("FrontDoor", new Vector3(x1, g, -61f), 0.98f, -170f, wood);
+            Leaf("FrontDoor", new Vector3(x1, g, -61f), 0.98f, -150f, wood); // ajar, clear of the way in
             // Daniel's door off the landing: hinged at its north edge, swung into his room (it will slam).
             danielDoor = Leaf("DanielDoor", new Vector3(xm, u, -57.77f), 0.9f, 175f, white);
             Leaf("MiaDoor", new Vector3(-70.22f, u, HouseBuilder.ZM), 0.95f, 95f, white);
             Leaf("BathDoor", new Vector3(-75.02f, u, HouseBuilder.ZM), 0.95f, 85f, white);
+            BackGate(root);
+        }
+
+        /// <summary>
+        /// The back gate in the board fence, bolted shut (the owner walked round the house and down the subway before
+        /// the house was done). It opens from the yard once the raid starts: that is the way out.
+        /// </summary>
+        void BackGate(Transform root)
+        {
+            var boards = RuntimeMaterials.Lit(new Color(0.33f, 0.26f, 0.2f), 0.2f);
+            float y = DistrictGenerator.Curb, w = 1.2f;
+            backGate = new GameObject("BackGate").transform;
+            backGate.SetParent(root, false);
+            backGate.SetPositionAndRotation(new Vector3(HouseBuilder.LotX0 + 0.05f, y, HouseBuilder.BackDoorZ - w / 2f), Quaternion.Euler(0f, -90f, 0f));
+            for (int i = 0; i < 8; i++)
+                PrimitiveMeshes.Part(backGate, "Board", PrimitiveType.Cube, new Vector3(0.08f + i * 0.148f, 0.88f, 0f), new Vector3(0.14f, 1.75f - (i % 2) * 0.04f, 0.04f), boards, null, false);
+            foreach (float h in new[] { 0.3f, 1.45f })
+                PrimitiveMeshes.Part(backGate, "Brace", PrimitiveType.Cube, new Vector3(w / 2f, h, -0.035f), new Vector3(w - 0.06f, 0.1f, 0.03f), boards, null, false);
+            PrimitiveMeshes.Part(backGate, "Bolt", PrimitiveType.Cube, new Vector3(w - 0.12f, 1f, -0.06f), new Vector3(0.2f, 0.04f, 0.03f),
+                                 RuntimeMaterials.Lit(new Color(0.25f, 0.25f, 0.26f), 0.5f, 0.8f), null, false);
+            var block = new GameObject("Block", typeof(BoxCollider));
+            block.transform.SetParent(backGate, false);
+            block.transform.localPosition = new Vector3(w / 2f, 1.1f, 0f);
+            block.GetComponent<BoxCollider>().size = new Vector3(w, 2.2f, 0.1f);
+            StoryInteractable.Add(block, "Open the back gate", () => !backGateOpen && (raiding || Done), p => OpenBackGate(true), 2.6f);
+        }
+
+        void OpenBackGate(bool animate)
+        {
+            if (backGateOpen || backGate == null) return;
+            backGateOpen = true;
+            if (animate) StartCoroutine(Slam(backGate, -170f, false)); // out into the alley, away from Daniel (owner: it swung into him)
+            else backGate.rotation = Quaternion.Euler(0f, -170f, 0f);
         }
 
         void MiasRoom(Transform root)
@@ -141,20 +175,26 @@ namespace Echoes.Narrative
             closetR.position = new Vector3(x, u, z1 - 0.04f);
             PrimitiveMeshes.Part(closetR, "Leaf", PrimitiveType.Cube, new Vector3(0.01f, 1.08f, -(w / 2f - 0.02f)), new Vector3(0.025f, 2.12f, w - 0.04f), wood, null, true);
 
+            // Owner: the phone couldn't be seen. Now it stands propped on a shoebox at knee height, facing out, the
+            // screen bright (a voice memo playing on repeat) and lighting the inside of the closet.
+            PrimitiveMeshes.Part(root, "Shoebox", PrimitiveType.Cube, new Vector3(x - 0.33f, u + 0.09f, (z0 + z1) / 2f), new Vector3(0.3f, 0.18f, 0.42f),
+                                 RuntimeMaterials.Lit(new Color(0.55f, 0.18f, 0.16f), 0.3f), null, true);
             phone = new GameObject("ClosetPhone").transform;
             phone.SetParent(root, false);
-            phone.SetPositionAndRotation(new Vector3(x - 0.3f, u + 0.02f, (z0 + z1) / 2f + 0.15f), Quaternion.Euler(0f, 30f, 0f));
+            Vector3 face = new Vector3(0.97f, 0.26f, 0f), along = new Vector3(-0.26f, 0.97f, 0f); // screen out and a little up; long side up
+            phone.SetPositionAndRotation(new Vector3(x - 0.36f, u + 0.18f + 0.075f, (z0 + z1) / 2f), Quaternion.LookRotation(along, face));
             PrimitiveMeshes.Part(phone, "Body", PrimitiveType.Cube, Vector3.zero, new Vector3(0.075f, 0.009f, 0.15f), RuntimeMaterials.Lit(new Color(0.03f, 0.03f, 0.035f), 0.8f), null, false);
-            PrimitiveMeshes.Part(phone, "Screen", PrimitiveType.Cube, new Vector3(0f, 0.005f, 0f), new Vector3(0.067f, 0.002f, 0.138f),
-                                 RuntimeMaterials.Lit(Color.black, 0.9f, 0f, new Color(0.75f, 0.85f, 1f) * 1.8f), null, false);
+            var screenMat = new Material(RuntimeMaterials.Lit(Color.black, 0.9f, 0f, Color.white * 2.6f)) { name = "RT_PhoneScreen", hideFlags = HideFlags.DontSave };
+            screenMat.SetTexture("_EmissionMap", ProcTextures.PhoneScreen());
+            PrimitiveMeshes.Part(phone, "Screen", PrimitiveType.Cube, new Vector3(0f, 0.005f, 0f), new Vector3(0.067f, 0.002f, 0.138f), screenMat, null, false);
             var lg = new GameObject("PhoneGlow", typeof(Light));
             lg.transform.SetParent(phone, false);
-            lg.transform.localPosition = new Vector3(0f, 0.15f, 0f);
+            lg.transform.localPosition = new Vector3(0f, 0.2f, 0f);
             phoneLight = lg.GetComponent<Light>();
             phoneLight.type = LightType.Point;
             phoneLight.color = new Color(0.7f, 0.82f, 1f);
-            phoneLight.intensity = 0.5f;
-            phoneLight.range = 1.6f;
+            phoneLight.intensity = 1.4f;
+            phoneLight.range = 2.6f;
 
             // One trigger over the closet front: first it opens the doors, then it takes the phone.
             var hit = new GameObject("ClosetUse", typeof(BoxCollider));
@@ -192,6 +232,51 @@ namespace Echoes.Narrative
             bc.isTrigger = true;
             bc.size = new Vector3(1.2f, 0.3f, 1f);
             StoryInteractable.Add(hit, "Look at the photo", () => !bedSeen && !talking && !raiding, p => StartCoroutine(LookAtBed()), 2.8f);
+        }
+
+        /// <summary>
+        /// The way in (owner: make the entrance look good): a doormat, the house number by the door, a mailbox with the
+        /// family name at the gate, and solar garden lights along the fence, still glowing in the blackout: from the gate
+        /// alley they mark the house.
+        /// </summary>
+        void Entrance(Transform root)
+        {
+            float g = HouseBuilder.F0, y = DistrictGenerator.Curb;
+            PrimitiveMeshes.Part(root, "Doormat", PrimitiveType.Cube, new Vector3(HouseBuilder.X1 + 0.4f, g + 0.008f, HouseBuilder.DoorZ), new Vector3(0.5f, 0.016f, 0.85f),
+                                 RuntimeMaterials.Fabric(new Color(0.22f, 0.16f, 0.1f), 0.1f, Fabric.Wool), null, false);
+            Stencil(root, "14", new Vector3(HouseBuilder.X1 + 0.03f, g + 1.75f, HouseBuilder.DoorZ + 0.85f), 0.24f, new Color(0.85f, 0.8f, 0.65f));
+
+            // Mailbox on a post outside the gate, REYES stencilled on the side that faces the alley.
+            var post = new Vector3(HouseBuilder.LotX1 + 0.25f, y, HouseBuilder.DoorZ - 1.1f);
+            var dark = RuntimeMaterials.Lit(new Color(0.08f, 0.08f, 0.09f), 0.5f, 0.6f);
+            PrimitiveMeshes.Part(root, "MailPost", PrimitiveType.Cube, post + Vector3.up * 0.55f, new Vector3(0.08f, 1.1f, 0.08f), RuntimeMaterials.Lit(new Color(0.35f, 0.3f, 0.25f), 0.2f), null, true);
+            PrimitiveMeshes.Part(root, "Mailbox", PrimitiveType.Cube, post + Vector3.up * 1.22f, new Vector3(0.24f, 0.24f, 0.46f), dark, null, true);
+            Stencil(root, "REYES", post + new Vector3(0.125f, 1.22f, 0f), 0.36f, new Color(0.9f, 0.88f, 0.82f));
+
+            // Solar stake lights inside the fence, either side of the gate.
+            var stakeMat = RuntimeMaterials.Lit(new Color(0.9f, 0.95f, 0.85f), 0.6f, 0f, new Color(0.8f, 0.95f, 0.75f) * 2.2f);
+            foreach (float dz in new[] { -2.3f, -1.1f, 1.1f, 2.3f })
+            {
+                var p = new Vector3(HouseBuilder.LotX1 - 0.45f, y, HouseBuilder.DoorZ + dz);
+                PrimitiveMeshes.Part(root, "SolarStake", PrimitiveType.Cylinder, p + Vector3.up * 0.18f, new Vector3(0.025f, 0.18f, 0.025f), dark, null, false);
+                PrimitiveMeshes.Part(root, "SolarLamp", PrimitiveType.Cylinder, p + Vector3.up * 0.4f, new Vector3(0.07f, 0.04f, 0.07f), stakeMat, null, false);
+                var lg = new GameObject("SolarLight", typeof(Light));
+                lg.transform.SetParent(root, false);
+                lg.transform.position = p + Vector3.up * 0.45f;
+                var l = lg.GetComponent<Light>();
+                l.type = LightType.Point;
+                l.color = new Color(0.85f, 0.95f, 0.8f);
+                l.intensity = 0.45f;
+                l.range = 2.2f;
+            }
+        }
+
+        /// <summary>Stencilled text on a wall that faces +X (the alley side), `width` metres wide.</summary>
+        static void Stencil(Transform root, string text, Vector3 centre, float width, Color tint)
+        {
+            var aspect = PixelFont.Aspect(text, false);
+            var mat = RuntimeMaterials.Decal("Stencil_" + text, PixelFont.Paint(text, false, 6, text.Length), tint, 0.3f);
+            PrimitiveMeshes.Part(root, "Stencil", PrimitiveType.Quad, centre, new Vector3(width, width * aspect.y / aspect.x, 1f), mat, Quaternion.Euler(0f, -90f, 0f), false);
         }
 
         // ------------------------------------------------------------------ the scene
@@ -292,16 +377,20 @@ namespace Echoes.Narrative
             am.PlayAt(SoundId.DoorSlam, b, 0.15f, 1.7f, 2f, 25f); // something small knocked over
         }
 
-        IEnumerator Slam(Transform door, float to)
+        /// <summary>Swings a door to `to`; `bang` = slammed hard (the scare), otherwise shoved open (the back gate).</summary>
+        IEnumerator Slam(Transform door, float to, bool bang = true)
         {
             if (door == null) yield break;
-            float from = door.eulerAngles.y;
-            for (float t = 0f; t < 0.25f; t += Time.deltaTime)
+            float from = door.eulerAngles.y, time = bang ? 0.25f : 0.45f;
+            if (!bang && AudioManager.Instance != null) AudioManager.Instance.PlayAt(SoundId.DoorSlam, door.position + Vector3.up, 0.35f, 1.3f, 2f, 25f);
+            for (float t = 0f; t < time; t += Time.deltaTime)
             {
-                door.rotation = Quaternion.Euler(0f, Mathf.LerpAngle(from, to, (t / 0.25f) * (t / 0.25f)), 0f);
+                float k = t / time;
+                door.rotation = Quaternion.Euler(0f, Mathf.LerpAngle(from, to, bang ? k * k : 1f - (1f - k) * (1f - k)), 0f);
                 yield return null;
             }
             door.rotation = Quaternion.Euler(0f, to, 0f);
+            if (!bang) yield break;
             if (AudioManager.Instance != null) AudioManager.Instance.PlayAt(SoundId.DoorSlam, door.position + Vector3.up, 0.9f, 1f, 2f, 40f);
             var rig = player.GetComponent<Player.CameraRig>();
             if (rig != null) rig.AddTrauma(0.12f);
@@ -333,7 +422,10 @@ namespace Echoes.Narrative
                 if (phoneLight != null) phoneLight.enabled = false;
             }
             var dd = DialogueDirector.Instance;
+            // The screen up close: a voice memo on repeat. No doubt left about what it is (owner: make the story clear).
+            yield return Inspect(ProcTextures.PhoneScreen(), true);
             if (dd != null) yield return dd.Conversation(DemoLines.ClosetPhone);
+            yield return Inspect(ProcTextures.PhoneScreen(), false);
             talking = false;
             if (!bedSeen && BodycamHUD.Instance != null) BodycamHUD.Instance.SetObjective("Search Mia's room");
         }
@@ -477,6 +569,7 @@ namespace Echoes.Narrative
             Done = true;
             phoneTaken = bedSeen = closetOpen = true;
             if (phone != null) Destroy(phone.gameObject);
+            OpenBackGate(false);
         }
 
         /// <summary>One voice at a time in this scene.</summary>

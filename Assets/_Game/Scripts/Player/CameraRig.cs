@@ -145,9 +145,8 @@ namespace Echoes.Player
             float dt = Time.deltaTime;
             if (dt <= 0f) return;
 
-            // Temporary cursor handling until the pause menu exists (phase 7).
-            if (input.PausePressed) { Cursor.lockState = CursorLockMode.None; Cursor.visible = true; }
-            else if (Cursor.lockState != CursorLockMode.Locked && UnityEngine.InputSystem.Mouse.current != null
+            // The pause menu owns the cursor while it is open; otherwise a click takes it back (after alt-tab).
+            if (!EchoesInput.Paused && Cursor.lockState != CursorLockMode.Locked && UnityEngine.InputSystem.Mouse.current != null
                      && UnityEngine.InputSystem.Mouse.current.leftButton.wasPressedThisFrame)
             { Cursor.lockState = CursorLockMode.Locked; Cursor.visible = false; }
             if (Cursor.lockState != CursorLockMode.Locked)
@@ -158,7 +157,7 @@ namespace Echoes.Player
             }
 
             // --- Look ---
-            Vector2 d = input.LookDelta * sensitivity * (IsAiming ? 0.7f : 1f);
+            Vector2 d = input.LookDelta * sensitivity * Core.GameSettings.Sensitivity * (IsAiming ? 0.7f : 1f);
             yaw += d.x;
             pitch = Mathf.Clamp(pitch - d.y, minPitch, maxPitch);
             if (mount != null)

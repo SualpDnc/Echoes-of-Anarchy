@@ -70,7 +70,8 @@ namespace Echoes.Audio
 
         void Update()
         {
-            AudioListener.volume = masterVolume;
+            // The player's volume setting (pause menu) on top of the mix level; writing masterVolume alone overrode it every frame.
+            AudioListener.volume = masterVolume * Core.GameSettings.Volume;
             ambienceSrc.volume = ambienceVolume;
             windSrc.volume = windVolume;
         }

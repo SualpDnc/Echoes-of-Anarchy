@@ -116,7 +116,7 @@ namespace Echoes.Rendering
             mb.intensity.Override(motionBlur);
             mb.clamp.Override(0.06f);
 
-            color.postExposure.Override(postExposure);
+            color.postExposure.Override(postExposure + Core.GameSettings.Brightness);
             color.contrast.Override(contrast);
             color.saturation.Override(saturation);
             color.colorFilter.Override(new Color(0.97f, 0.99f, 1f));
@@ -152,8 +152,14 @@ namespace Echoes.Rendering
         /// <summary>Exposure shift in EV, e.g. auto-exposure adapting when the flashlight is off.</summary>
         public void SetExposureOffset(float ev)
         {
+            exposureOffset = ev;
             if (profile == null) return;
-            color.postExposure.Override(postExposure + ev);
+            color.postExposure.Override(postExposure + Core.GameSettings.Brightness + ev);
         }
+
+        float exposureOffset;
+
+        /// <summary>Re-applies the exposure after the brightness setting changed (pause menu).</summary>
+        public void ApplyBrightness() => SetExposureOffset(exposureOffset);
     }
 }

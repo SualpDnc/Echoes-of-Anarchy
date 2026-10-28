@@ -134,7 +134,18 @@ namespace Echoes.Narrative
             foreach (var w in words) { total += w.syllables; estimate += w.syllables * 0.165f + w.pauseAfter; }
             float readTime = Mathf.Max(1.5f, GameSettings.Pick(line.en, line.tr).Length * readSecondsPerChar);
             float shown = Mathf.Max(estimate, readTime) + 0.4f;
-            if (BodycamHUD.Instance != null) BodycamHUD.Instance.ShowLine(p.name, p.color, line.en, line.tr, shown);
+            if (BodycamHUD.Instance != null)
+            {
+                if (p.thought) BodycamHUD.Instance.ShowLine(p.name, p.color, "<i>" + line.en + "</i>", "<i>" + line.tr + "</i>", shown);
+                else BodycamHUD.Instance.ShowLine(p.name, p.color, line.en, line.tr, shown);
+            }
+
+            // Thoughts are read, not heard (owner: Daniel's inner voice should make no sound at all).
+            if (p.thought)
+            {
+                yield return new WaitForSeconds(shown - 0.4f);
+                yield break;
+            }
 
             IsSpeaking = true;
             float start = Time.time;
@@ -156,7 +167,7 @@ namespace Echoes.Narrative
                     {
                         int v = Random.Range(0, variations);
                         var clip = am.Clip(p.voice, v);
-                        Voice(am, p.voice, v, ch, line.source, loud, pitch);
+                        Voice(am, p.voice, v, ch, line.source, loud * 1f, pitch);
                         dur = clip.length / pitch * 0.85f;
                         // The clone sometimes catches on a syllable.
                         if (glitch > 0f && Random.value < glitch * 0.15f)

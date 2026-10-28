@@ -9,8 +9,10 @@ for what a Marine will do to get her back.
 
 `Unity 6 (6000.6)` · `URP · Forward+` · `C#` · `HLSL` · `Input System` · `AI Navigation`
 
-> **Status:** a playable vertical slice of about 15 minutes (the ambulance cold open through the school-door
-> cliffhanger) that is being shaped into a tight, roughly 30-minute portfolio game.
+> **Status:** complete, about 30 minutes from the ambulance to the end card. The night runs: a cold open and a crash,
+> a choice over your wounded partner, a gas station to sneak through or fight through, a dark search of your own house,
+> a dead subway with a blind hunter, a masked party in your daughter's school yard that ends at a mounted machine gun,
+> and a finale in the school gym where the man behind it all hands you the choice, on camera.
 
 ![Daniel's boot-camp portrait, rendered by the game's own SDF ray marcher](docs/media/marine-portrait-raw.png)
 
@@ -31,7 +33,7 @@ built by C# generators and HLSL shaders when the scene is built or when the game
 | **Materials** | PBR texture "recipes" (albedo, normal, mask) synthesised from layered noise (asphalt, brick, concrete, metal, fabric weaves, skin pores), cached as PNGs |
 | **Characters** | Skinned humanoids lofted from superellipse cross-sections, with garment layers (hems, cuffs, pockets, zips, lapels), sculpted heads with lidded eyes, lips, ears and stubble, four-fingered hands, and masks (LED grin, pig, porcelain angel). Each has one skinned mesh and 16 bones |
 | **Animation** | Fully procedural: gait-phase locomotion, idle breathing and weight shift, pose blending (aim, surrender, kneel, cower, seated), head look, two-bone IK for feet and hands (the driver's hands follow a turning steering wheel), and ragdolls |
-| **Audio** | A DSP synthesis library: gunshots modelled as a Friedlander blast wave clipped by a body-camera mic with street reflections, engines, sirens, impacts, a heartbeat and tinnitus. Sounds render in parallel at load, and 3D playback adds speed-of-sound delay, air absorption and occlusion |
+| **Audio** | A DSP synthesis library: gunshots modelled as a Friedlander blast wave clipped by a body-camera mic with street reflections, engines, sirens, impacts, a heartbeat and tinnitus, even the party's club track and the crowd. Sounds render in parallel at load, and 3D playback adds speed-of-sound delay, air absorption and occlusion |
 | **Voices** | Dialogue is "babble" built from per-speaker synthesised syllables, timed to the words of each English line, and passed through radio, phone or room channels. Subtitles are in English or Turkish |
 | **Images** | A 5×7 pixel font painted as spray paint (drips, overspray) or stencil; blood decals; the ray-traced portrait above |
 
@@ -41,6 +43,8 @@ built by C# generators and HLSL shaders when the scene is built or when the game
   heading line and objective lines; there are no waypoint markers.
 - **Combat and stealth:** hitboxes per bone, damage multipliers, blood that scales with distance, faint damage numbers,
   a pistol with visible magazine reloads, thrown bottles for distraction, and pistol-whip or punch melee.
+- **A blind, armoured hunter** (the subway): a hearing-only brain on the noise bus. Footsteps, landings, broken bottles and gunshots carry different distances; bullets spark off his plates, so the only way past him is quiet.
+- **Social stealth and a turret** (the school-yard party): a masked crowd watched by guards whose own sight check (people in between hide you) fills a suspicion meter when you run, crouch, show the gun or stare; the big screen at the party switches to the player's own bodycam (a second camera rendering into two textures in turn), then a mounted machine gun on a pickup against the crowd, a second wave and a charging truck.
 - **AI:** a perception model (sight scaled by how lit the player is, plus hearing on a noise bus) drives a finite
   state machine with morale. Enemies surrender or flee, can be spared or executed, call reinforcements, and run a
   scripted "herding" chase mode in which they shoot to miss until provoked.
@@ -49,6 +53,10 @@ built by C# generators and HLSL shaders when the scene is built or when the game
   - **StoryState** keeps facts that later scenes react to: if you left your partner, the livestream chat mocks you
     for it.
   - **Checkpoints** restore the world as it was, not just the player's position.
+- **Inner voice:** Daniel's thoughts are silent italic subtitles, apart from what he says out loud.
+- **Title screen, pause menu and settings** built in code (UGUI): sensitivity, volume, brightness, subtitle language, damage numbers; restart from the last checkpoint.
+- **A finale with a choice:** the gym is a runtime-built broadcast set; the player decides whether to fire, and the
+  lines, the detective's closing note and the end card change with it (and with what the Ledger saw that night).
 - **Narrative direction:** a dialogue director handles conversations, radio traffic, phone calls and voicemail. The
   sequences include a cold open in a moving ambulance, a crash, a moral choice, a stealth-or-fight gas station with
   reinforcement waves, a chase you can only escape by crawling under a garage shutter, and a livestream hijacking the
@@ -86,7 +94,8 @@ direction.
 1. Install **Unity 6000.6.2f1** and open the project.
 2. Run **Tools › Echoes › Build Harlow District**. This generates the textures, materials and the whole scene; the
    `Generated/` and `Scenes/` folders are build outputs and are not in the repository.
-3. Open `Assets/_Game/Scenes/HarlowDistrict.unity` and press Play. The demo starts in the ambulance.
+3. Open `Assets/_Game/Scenes/HarlowDistrict.unity` and press Play. The game opens on its title screen, then the
+   ambulance.
 
 To make a shareable Windows build, use **Tools › Echoes › Build Demo (Windows)**.
 
@@ -96,12 +105,13 @@ To make a shareable Windows build, use **Tools › Echoes › Build Demo (Window
 | Move / look | WASD / mouse |
 | Sprint / crouch / jump | Shift / C (or hold Ctrl) / Space |
 | Fire / aim / reload | Left click / right click / R |
+| Mounted gun: fire / steady | Left click / right click |
 | Use, or punch | F |
 | Throw a bottle | G |
 | Lean | Q / E |
 | Holster / flashlight / med kit | X / T / H |
 | Damage numbers / subtitle language | F2 / F3 |
-| Quit | Hold Esc |
+| Pause menu (settings, restart from checkpoint, quit) | Esc |
 
 ---
 
@@ -117,11 +127,11 @@ Assets/_Game/Scripts
 ├── Combat      health and hitboxes, the pistol, melee, throwing, impact FX
 ├── AI          humanoid builder, skinned body builder, masks, procedural animator, perception, NPC brain
 ├── Narrative   dialogue director, lines (EN/TR), story sequences
-├── UI          bodycam HUD, livestream overlay, damage numbers
+├── UI          bodycam HUD, title and pause menus, livestream overlay, suspicion eye, damage numbers
 └── Editor      scene builder, material library, build pipeline
 ```
 
-About 18,000 lines of C#, plus two HLSL shaders.
+About 23,000 lines of C#, plus two HLSL shaders.
 
 ---
 

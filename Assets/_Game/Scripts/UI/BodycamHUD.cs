@@ -70,7 +70,8 @@ namespace Echoes.UI
 
             gameObject.AddComponent<DamageNumbers>();
             gameObject.AddComponent<StreamOverlay>();
-            gameObject.AddComponent<QuitKey>();
+            gameObject.AddComponent<SuspicionEye>();
+            gameObject.AddComponent<PauseMenu>();
         }
 
         RawImage FullScreenRaw(string name, Texture tex, float alpha)

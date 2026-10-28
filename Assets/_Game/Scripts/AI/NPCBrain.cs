@@ -117,6 +117,14 @@ namespace Echoes.AI
             else SetState(startCowering ? NPCState.Cower : stationary ? NPCState.Idle : NPCState.Patrol);
         }
 
+        /// <summary>Goes for Daniel now, wherever he is (8d: the party crowd turned into a mob).</summary>
+        public void Engage()
+        {
+            if (State == NPCState.Dead || player == null) return;
+            perception.ForceAlert(player.position);
+            SetState(NPCState.Attack);
+        }
+
         /// <summary>Gives up on the spot (story scenes make sure someone does).</summary>
         public void Surrender()
         {

@@ -3,7 +3,7 @@ using Echoes.Audio;
 
 namespace Echoes.Narrative
 {
-    public enum Speaker { Daniel, Mia, MiaClone, Luis, Dispatch, Smiler, Looter, Civilian, CivilianWoman, Hale, LuisRadio }
+    public enum Speaker { Daniel, Mia, MiaClone, Luis, Dispatch, Smiler, Looter, Civilian, CivilianWoman, Hale, LuisRadio, DanielThought, Vance, Rachel }
 
     /// <summary>Where a voice comes from: Daniel's own (chest mic), a person in the world, his phone, or the radio.</summary>
     public enum LineChannel { Self, World, Phone, Radio }
@@ -18,6 +18,8 @@ namespace Echoes.Narrative
             public SoundId voice;
             public LineChannel channel;
             public float glitch;
+            /// <summary>A thought, not said out loud: whispered, quieter, the subtitle in italics.</summary>
+            public bool thought;
         }
 
         public static Profile Get(Speaker s)
@@ -34,6 +36,9 @@ namespace Echoes.Narrative
                 case Speaker.Looter: return P("LOOTER", new Color(1f, 0.55f, 0.45f), SoundId.VoiceMale, LineChannel.World);
                 case Speaker.CivilianWoman: return P("WOMAN", new Color(0.9f, 0.9f, 0.75f), SoundId.VoiceFemale, LineChannel.World);
                 case Speaker.Hale: return P("DET. HALE", new Color(0.75f, 0.75f, 0.75f), SoundId.VoiceHale, LineChannel.Self);
+                case Speaker.DanielThought: { var t = P("DANIEL", new Color(0.62f, 0.72f, 0.82f), SoundId.VoiceDanielThought, LineChannel.Self); t.thought = true; return t; }
+                case Speaker.Vance: return P("VANCE", new Color(1f, 0.45f, 0.35f), SoundId.VoiceVance, LineChannel.Phone);
+                case Speaker.Rachel: return P("RACHEL", new Color(0.8f, 0.7f, 1f), SoundId.VoiceDispatch, LineChannel.Phone); // a woman's voice already baked through a narrow band
                 default: return P("MAN", new Color(0.9f, 0.9f, 0.75f), SoundId.VoiceMale, LineChannel.World);
             }
         }

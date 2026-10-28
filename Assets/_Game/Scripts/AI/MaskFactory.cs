@@ -24,6 +24,7 @@ namespace Echoes.AI
             {
                 case HeadKind.LedSmile:
                     LedSmile(mb, look);
+                    if (look.blindfold) Blindfold(mb);
                     return;
                 case HeadKind.Pig:
                     Skull(mb, look, false);
@@ -357,6 +358,15 @@ namespace Echoes.AI
                     var p = Face(side * (0.22f + t * 0.24f), 0.22f + Mathf.Sin(t * Mathf.PI) * 0.09f);
                     mb.Box(led, p, new Vector3(0.018f, 0.012f, 0.007f), Quaternion.LookRotation(p - C), HeadSkin);
                 }
+        }
+
+        /// <summary>A strip of dirty cloth tied over the mask's eyes, the knot's tails hanging at the back (8c).</summary>
+        static void Blindfold(SkinnedBodyBuilder mb)
+        {
+            var cloth = RuntimeMaterials.Fabric(new Color(0.32f, 0.29f, 0.24f), 0.15f, Fabric.Cotton);
+            mb.Ellipsoid(cloth, C, R * 1.1f, Quaternion.identity, OnHead, 14, 24, d => d * 0.002f * Mathf.Sin(d.x * 30f), d => d.y > 0.08f && d.y < 0.42f);
+            foreach (float side in new[] { -1f, 1f })
+                mb.Box(cloth, C + new Vector3(side * 0.02f, 0.01f, -0.135f), new Vector3(0.03f, 0.12f, 0.008f), Quaternion.Euler(10f, 0f, side * 12f), HeadSkin);
         }
 
         static void Hood(SkinnedBodyBuilder mb, Material cloth)

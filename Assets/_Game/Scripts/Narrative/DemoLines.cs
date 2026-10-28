@@ -92,7 +92,7 @@ namespace Echoes.Narrative
 
         public static Line[] SmilersSightedAlone => new[]
         {
-            L(Speaker.Daniel, "Who the hell are they?", "Bunlar da kim?"),
+            L(Speaker.DanielThought, "Masks. Standing there. Filming us like it's a show.", "Maskeler. Orada dikilmiş... bizi bir gösteriymiş gibi çekiyorlar."),
         };
 
         public static Line[] LuisTreated => new[]
@@ -118,8 +118,8 @@ namespace Echoes.Narrative
                             "Arkamızdan yolu kapattılar. Kuzeyden olmaz."),
         };
 
-        public static Line WrongWay => L(Speaker.Daniel, "Not that way. Home's south.", "O taraf olmaz. Ev güneyde.");
-        public static Line StayWithLuis => L(Speaker.Daniel, "Luis first. I'm not leaving him like this.", "Önce Luis. Onu bu halde bırakmam.");
+        public static Line WrongWay => L(Speaker.DanielThought, "No. Not north. Home is south, past the gas station.", "Hayır. Kuzey değil. Ev güneyde, benzinliğin ötesinde.");
+        public static Line StayWithLuis => L(Speaker.DanielThought, "Not like this. He's still talking to me. I don't walk away from my partner.", "Böyle olmaz. Hâlâ benimle konuşuyor. Ortağımı arkamda bırakıp gitmem.");
 
         /// <summary>Treated: Luis hands over his radio and becomes Daniel's eyes on the dispatch channel.</summary>
         public static Line[] LuisGivesRadio => new[]
@@ -137,7 +137,7 @@ namespace Echoes.Narrative
         };
 
         /// <summary>Left behind: the Smilers come back for him.</summary>
-        public static Line LuisAfterShots => L(Speaker.Daniel, "Luis...?", "Luis...?");
+        public static Line LuisAfterShots => L(Speaker.DanielThought, "Two shots. Back at the wreck... Luis. God, no.", "İki el ateş. Kaza yerinden... Luis. Tanrım, hayır.");
 
         public static Line LuisAbandoned => L(Speaker.Luis, "Danny? Danny, don't... don't leave me here!",
                                               "Danny? Danny, yapma... beni burada bırakma!");
@@ -197,31 +197,31 @@ namespace Echoes.Narrative
         };
 
         public static Line HouseEnter => L(Speaker.Daniel, "Mia? Mia, it's Dad!", "Mia? Mia, benim, baban!");
-        public static Line HouseSteps => L(Speaker.Daniel, "Mia...?", "Mia...?");
+        public static Line HouseSteps => L(Speaker.DanielThought, "Footsteps. Upstairs. Someone's in my house.", "Ayak sesleri. Yukarıda. Evimde biri var.");
 
         /// <summary>The phone in Mia's closet, looping her voice. Daniel says what it means (owner: make the story clear).</summary>
         public static Line[] ClosetPhone => new[]
         {
-            L(Speaker.Daniel, "A phone...", "Bir telefon..."),
-            L(Speaker.Daniel, "It's a recording. They're using her voice.", "Bu bir kayıt. Onun sesini kullanıyorlar."),
-            L(Speaker.Daniel, "Where is she?", "Nerede o?"),
+            L(Speaker.DanielThought, "Her voice... from a phone. On a loop.", "Onun sesi... bir telefondan. Durmadan tekrar ediyor."),
+            L(Speaker.DanielThought, "It's a recording. They're using my daughter's voice to bait me.", "Bu bir kayıt. Kızımın sesini beni tuzağa çekmek için kullanıyorlar."),
+            L(Speaker.DanielThought, "Then where is she?", "O zaman o nerede?"),
         };
 
         /// <summary>The unit photo on Mia's bed, Vance's face scratched out, and the note.</summary>
         public static Line[] UnitPhotoLook => new[]
         {
-            L(Speaker.Daniel, "Our unit. Twenty-nineteen.", "Birliğimiz. İki bin on dokuz."),
-            L(Speaker.Daniel, "Vance.", "Vance."),
-            L(Speaker.Daniel, "You're supposed to be in Leavenworth.", "Senin askerî cezaevinde olman gerekiyordu."),
+            L(Speaker.DanielThought, "Charlie Company. Twenty-nineteen.", "Charlie Bölüğü. İki bin on dokuz."),
+            L(Speaker.DanielThought, "One face scratched out. I don't need to see it. Vance.", "Bir yüz kazınmış. Görmeme gerek yok. Vance."),
+            L(Speaker.DanielThought, "I put you in Leavenworth. You should still be rotting there.", "Seni askerî cezaevine ben soktum. Hâlâ orada çürüyor olmalıydın."),
         };
 
         public static Line[] NoteLook => new[]
         {
-            L(Speaker.Daniel, "\"School. Come alone.\"", "\"Okul. Yalnız gel.\""),
-            L(Speaker.Daniel, "He wants me at the school.", "Beni okulda istiyor."),
+            L(Speaker.DanielThought, "\"School. Come alone.\" In red marker. Her marker.", "\"Okul. Yalnız gel.\" Kırmızı kalemle. Onun kalemiyle."),
+            L(Speaker.DanielThought, "Her school. He wants me there, and he wants me alone.", "Onun okulu. Beni orada istiyor. Yalnız."),
         };
 
-        public static Line RaidSeen => L(Speaker.Daniel, "Headlights. They're back. Out the back, now.", "Farlar. Geri geldiler. Arkadan çık, hemen.");
+        public static Line RaidSeen => L(Speaker.DanielThought, "High beams. That truck. They're back. Out the back, now.", "Uzun farlar. O kamyon. Geri geldiler. Arkadan çık, hemen.");
 
         public static Line[] RaidTaunts => new[]
         {
@@ -230,6 +230,159 @@ namespace Echoes.Narrative
         };
 
         public static Line RaidWithdraw => L(Speaker.Smiler, "Not here, Danny! The show's at the school!", "Burada değil Danny! Gösteri okulda!");
+
+        // ------------------------------------------------------------------ 8c: the subway
+
+        /// <summary>
+        /// Vance calls before Daniel goes down (owner: someone should say on the phone who is down there). The first
+        /// time his voice is heard: he names the hunter, says he is blind, brainwashed, huge, and that bullets won't do.
+        /// </summary>
+        public static Line[] VanceCall => new[]
+        {
+            L(Speaker.Vance, "Alley's closed, Danny. The shortcut's under your feet.", "Sokak kapalı Danny. Kestirme yol ayaklarının altında."),
+            L(Speaker.Daniel, "Vance. Where is she?", "Vance. Nerede o?"),
+            L(Speaker.Vance, "Down there's Boone. We scrubbed his head clean. Big boy, does what he's told.",
+                             "Aşağıda Boone var. Beynini tertemiz yıkadık. Koca adamdır, ne denirse onu yapar."),
+            L(Speaker.Vance, "Can't see a thing. But he hears a heartbeat at ten paces, and bullets only make him angry.",
+                             "Hiçbir şey göremez. Ama on adımdan kalp atışını duyar, kurşunlar da onu sadece kızdırır."),
+            L(Speaker.Vance, "Walk softly, Marine. Don't run. He's faster than you.", "Sessiz yürü asker. Sakın koşma. O senden hızlı."),
+        };
+
+        public static Line MetroBlocked => L(Speaker.DanielThought, "The alley's on fire. The subway, then: Kessler Street station comes up in her schoolyard.",
+                                                                    "Sokak yanıyor. O zaman metro: Kessler Caddesi istasyonu onun okul bahçesine çıkıyor.");
+        public static Line MetroDark => L(Speaker.DanielThought, "No power down here. Not a sound.", "Aşağıda elektrik yok. Çıt yok.");
+
+        /// <summary>The blind Smiler on the platform: he hears Daniel come in.</summary>
+        public static Line BlindReveal => L(Speaker.Smiler, "Danny... I can't see you. But I can hear you breathing.",
+                                                            "Danny... Seni göremiyorum. Ama nefesini duyabiliyorum.");
+        public static Line BlindThought => L(Speaker.DanielThought, "Boone. Blindfolded, plated like a tank. He hunts by sound... so I make none.",
+                                                                    "Boone. Gözleri bağlı, tank gibi zırhlı. Sese göre avlanıyor... o zaman hiç ses çıkarmayacağım.");
+
+        /// <summary>When he catches a sound and comes for it.</summary>
+        public static Line BlindHeard(int i)
+        {
+            switch (i % 3)
+            {
+                case 0: return L(Speaker.Smiler, "There you are...", "İşte oradasın...");
+                case 1: return L(Speaker.Smiler, "I hear you, Danny.", "Seni duyuyorum, Danny.");
+                default: return L(Speaker.Smiler, "Shhh... listen.", "Şşş... dinle.");
+            }
+        }
+
+        public static Line GateRusted => L(Speaker.DanielThought, "Rusted shut. This is going to be loud.", "Paslanmış. Bu çok gürültülü olacak.");
+        public static Line BlindChase => L(Speaker.Smiler, "THERE you are!", "İŞTE oradasın!");
+        public static Line BlindGrille => L(Speaker.Smiler, "Run, Danny! The show's almost on!", "Koş Danny! Gösteri neredeyse başlıyor!");
+
+        // ------------------------------------------------------------------ 8d: the party in the school yard
+
+        public static Line PartyUp => L(Speaker.DanielThought, "Music. A party... in her schoolyard. They're all waiting for something.",
+                                                               "Müzik. Bir parti... onun okul bahçesinde. Hepsi bir şey bekliyor.");
+        public static Line MaskSeen => L(Speaker.DanielThought, "Out cold. His mask, his jacket... in a crowd of masks nobody looks twice.",
+                                                                "Kendinden geçmiş. Maskesi, ceketi... maskeli bir kalabalıkta kimse ikinci kez bakmaz.");
+        public static Line NoMask => L(Speaker.DanielThought, "Not like this. They'd know my face in a second.", "Böyle olmaz. Yüzümü bir saniyede tanırlar.");
+        public static Line MaskOn => L(Speaker.DanielThought, "Walk slow. Don't stare at the grins. Get to the school door.",
+                                                              "Yavaş yürü. Sırıtanlara bakma. Okulun kapısına ulaş.");
+
+        /// <summary>The DJ on the PA between tracks.</summary>
+        public static Line PartyHype(int i)
+        {
+            switch (i % 3)
+            {
+                case 0: return L(Speaker.Smiler, "Twenty minutes to showtime, Harlow!", "Gösteriye yirmi dakika, Harlow!");
+                case 1: return L(Speaker.Smiler, "Who's ready to watch a hero break?", "Bir kahramanın kırılışını izlemeye kim hazır?");
+                default: return L(Speaker.Smiler, "Make some noise for the Marine!", "Denizci için ses verin!");
+            }
+        }
+
+        /// <summary>What the crowd says as Daniel walks past (it tells the player what tonight is).</summary>
+        public static Line PartyTalk(int i)
+        {
+            switch (i % 6)
+            {
+                case 0: return L(Speaker.Looter, "Vance says the Marine walks in tonight. Live.", "Vance, denizci bu gece içeri girecek diyor. Canlı.");
+                case 1: return L(Speaker.CivilianWoman, "They've been streaming him all night. Since the ambulance.", "Bütün gece onu yayınlıyorlar. Ambulanstan beri.");
+                case 2: return L(Speaker.Looter, "He ratted Vance out, back in the war. Tonight he pays for it.", "Savaşta Vance'i ihbar etmiş. Bu gece bedelini ödeyecek.");
+                case 3: return L(Speaker.CivilianWoman, "Ten bucks says he cracks before midnight.", "On dolarına iddiaya girerim, gece yarısından önce kırılır.");
+                case 4: return L(Speaker.Looter, "Best Purge ever. Best. Purge. Ever.", "Gelmiş geçmiş en iyi Arınma. En. İyi. Arınma.");
+                default: return L(Speaker.CivilianWoman, "Did you see what he did at the gas station?", "Benzinlikte ne yaptığını gördün mü?");
+            }
+        }
+
+        /// <summary>A guard who has noticed something off about him.</summary>
+        public static Line GuardWary(int i)
+        {
+            switch (i % 3)
+            {
+                case 0: return L(Speaker.Smiler, "Hey. You. ...Huh.", "Hey. Sen. ...Hıh.");
+                case 1: return L(Speaker.Smiler, "Something wrong with you, pal?", "Bir sorunun mu var, dostum?");
+                default: return L(Speaker.Smiler, "Easy there. Easy.", "Sakin. Sakin ol.");
+            }
+        }
+
+        public static Line GuardCaught => L(Speaker.Smiler, "That's him! That's Reyes!", "Bu o! Bu Reyes!");
+
+        /// <summary>The reveal: Vance on the PA, Daniel's own camera on the big screen.</summary>
+        public static Line[] Reveal => new[]
+        {
+            L(Speaker.Vance, "Kill the music.", "Müziği kesin."),
+            L(Speaker.Vance, "Harlow... look who came to the party.", "Harlow... bakın partiye kim gelmiş."),
+            L(Speaker.Vance, "That's his camera you're watching. Wave, Danny.", "İzlediğiniz onun kamerası. El salla Danny."),
+            L(Speaker.Vance, "Take off the mask, Marine. Show them who you are.", "Maskeni çıkar asker. Onlara kim olduğunu göster."),
+        };
+        public static Line RevealThought => L(Speaker.DanielThought, "The gun on the truck. Now.", "Kamyondaki silah. Hemen.");
+        public static Line RevealGo => L(Speaker.Vance, "Get him.", "Yakalayın onu.");
+        public static Line CaughtVance => L(Speaker.Vance, "Busted already, Danny? Get him!", "Hemen mi yakalandın Danny? Yakalayın onu!");
+
+        public static Line GunThought => L(Speaker.DanielThought, "They brought this. Not me.", "Bunu onlar istedi. Ben değil.");
+        public static Line TurretTaunt => L(Speaker.Vance, "Look at him go! Tell me again you're not a killer, Danny.",
+                                                           "Şuna bakın! Bana bir daha katil olmadığını söyle Danny.");
+        public static Line WaveTwo => L(Speaker.Vance, "Backstage, boys. Bring him down.", "Kulise çocuklar. İndirin onu.");
+        public static Line TruckComing => L(Speaker.Vance, "You want a show? Here's the finale.", "Gösteri mi istiyorsun? İşte final.");
+        public static Line TruckDown => L(Speaker.DanielThought, "The door. Go.", "Kapı. Git.");
+
+        // ------------------------------------------------------------------ 8e: the gym
+
+        public static Line GymInvite => L(Speaker.Vance, "Doors are open, Danny. Come say hello.", "Kapılar açık Danny. Gel de bir merhaba de.");
+        public static Line GymEnter => L(Speaker.DanielThought, "Her gym. They turned it into a studio.", "Onun spor salonu. Stüdyoya çevirmişler.");
+
+        /// <summary>Vance, face to face. Between the second and third line he takes off his mask.</summary>
+        public static Line[] GymTalk => new[]
+        {
+            L(Speaker.Vance, "Welcome to the show, Marine.", "Gösteriye hoş geldin asker."),
+            L(Speaker.Vance, "You remember this face?", "Bu yüzü hatırlıyor musun?"),
+            L(Speaker.Daniel, "Where's my daughter, Eli?", "Kızım nerede Eli?"),
+            L(Speaker.Vance, "You reported me. Four years in Leavenworth for doing what they sent us there to do.",
+                             "Beni ihbar ettin. Bizi oraya ne için gönderdilerse onu yaptım diye Leavenworth'te dört yıl."),
+            L(Speaker.Vance, "Tonight everybody sees what you really are. Same as me. Just with a camera on your chest.",
+                             "Bu gece herkes senin aslında ne olduğunu görüyor. Benim gibi. Sadece göğsünde bir kamerayla."),
+            L(Speaker.Daniel, "Where is she?!", "Nerede o?!"),
+            // "Before the siren" is the confession Hale's case rests on: the night is legal, the hour before it isn't.
+            L(Speaker.Vance, "Mia was never here, Danny. Not at your house, not on the phone. That was us. From the first call, before the siren even sounded.",
+                             "Mia hiç burada olmadı Danny. Ne evinde, ne telefonda. O bizdik. İlk aramadan beri, daha siren bile çalmadan."),
+        };
+        public static Line Voicemail => L(Speaker.DanielThought, "The voicemail. Rachel's. I never listened.", "Sesli mesaj. Rachel'ınki. Hiç dinlemedim.");
+        public static Line RachelMessage => L(Speaker.Rachel, "Dan, it's me. I picked Mia up early, she's with me tonight. Call me when you can.",
+                                                              "Dan, benim. Mia'yı erken aldım, bu gece benimle. Fırsatın olunca ara beni.");
+        public static Line[] RealMia => new[]
+        {
+            L(Speaker.Mia, "Dad? ...What time is it?", "Baba? ...Saat kaç?"),
+            L(Speaker.Daniel, "Late, baby. Go back to sleep. I love you.", "Geç oldu bebeğim. Uyumaya devam et. Seni seviyorum."),
+            L(Speaker.Mia, "Love you too, Dad.", "Ben de seni seviyorum baba."),
+        };
+        public static Line DoIt => L(Speaker.Vance, "Do it, Danny. Everyone's watching.", "Yap şunu Danny. Herkes izliyor.");
+        public static Line FiredCheer => L(Speaker.Smiler, "He did it! He actually did it!", "Yaptı! Gerçekten yaptı!");
+        public static Line FiredThought => L(Speaker.DanielThought, "That's what they wanted. And I gave it to them.", "İstedikleri buydu. Ben de verdim.");
+        public static Line[] Lowered => new[]
+        {
+            L(Speaker.Daniel, "No. You wanted them to see who I am.", "Hayır. Kim olduğumu görmelerini istedin."),
+            L(Speaker.Daniel, "This camera's been running all night, Eli. Every mask. Every face. Every name.", "Bu kamera bütün gece çalıştı Eli. Her maske. Her yüz. Her isim."),
+            L(Speaker.Vance, "...Turn it off.", "...Kapat onu."),
+            L(Speaker.Daniel, "Not a chance.", "Asla."),
+        };
+
+        public static Line HaleEnd(bool fired) => fired
+            ? L(Speaker.Hale, "He pulled the trigger. Legal. He'll carry it anyway.", "Tetiği çekti. Yasal. Yine de ömür boyu taşıyacak.")
+            : L(Speaker.Hale, "He lowered the gun. The tape did the rest.", "Silahı indirdi. Gerisini kaset yaptı.");
 
         // ------------------------------------------------------------------ sequence 4: the alleys
 
@@ -293,8 +446,8 @@ namespace Echoes.Narrative
 
         public static Line[] PhotoLook => new[]
         {
-            L(Speaker.Daniel, "That's me. Parris Island, twenty-sixteen.", "Bu benim. Parris Island, iki bin on altı."),
-            L(Speaker.Daniel, "This was on Mia's wall. In her room.", "Bu Mia'nın duvarındaydı. Kendi odasında."),
+            L(Speaker.DanielThought, "That's me. Parris Island, twenty-sixteen.", "Bu benim. Parris Island, iki bin on altı."),
+            L(Speaker.DanielThought, "The empty spot on the living-room wall. They took it off my wall to put it here.", "Salon duvarındaki o boşluk. Bunu buraya asmak için duvarımdan sökmüşler."),
         };
 
         public static Line[] StreamTaunt => new[]

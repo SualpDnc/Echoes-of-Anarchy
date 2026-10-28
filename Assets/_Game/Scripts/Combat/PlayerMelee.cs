@@ -59,7 +59,7 @@ namespace Echoes.Combat
             foreach (var h in hits)
             {
                 if (h.collider.transform.IsChildOf(transform)) continue;
-                if (!h.collider.TryGetComponent(out Hitbox hb) || hb.owner == null || hb.owner.IsDead) continue;
+                if (!h.collider.TryGetComponent(out Hitbox hb) || hb.owner == null || hb.owner.IsDead || hb.owner.meleeImmune) continue;
                 // Prefer the head when it's in the cast — that's where a swing lands.
                 float d = h.distance - (hb.part == BodyPart.Head ? 0.3f : 0f);
                 if (d < bestDist) { bestDist = d; best = hb; }

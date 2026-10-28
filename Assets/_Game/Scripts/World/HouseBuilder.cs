@@ -18,7 +18,7 @@ namespace Echoes.World
         public const float LotX0 = -80f, LotX1 = -66f, LotZ0 = -72f, LotZ1 = -54f;
         public const float Rise = 0.35f, Storey = 2.9f, Ceiling = 2.7f, T = 0.2f;
         public const float DoorZ = -60.5f, BackDoorZ = -65f;
-        public const float StairX0 = -73.4f, StairX1 = -72.3f, StairBottomZ = -57.9f, StairTopZ = -62.7f, OpeningZ1 = -58.9f;
+        public const float StairX0 = -73.4f, StairX1 = -72.3f, StairBottomZ = -57.9f, StairTopZ = -62.7f, OpeningZ1 = -58.5f;
         public const float ClosetX0 = -73.4f, ClosetX1 = -72.7f, ClosetZ0 = -70.4f, ClosetZ1 = -68.8f;
 
         public static float F0 => DistrictGenerator.Curb + Rise;   // ground floor level
@@ -153,22 +153,52 @@ namespace Echoes.World
             var s = new Solid();
             const int steps = 16;
             float run = (StairBottomZ - StairTopZ) / steps, rise = Storey / steps;
+            // The bottom of the flight faces the north wall, so the first two steps reach out into the hall with rounded
+            // ends (a curtail and a bullnose): you step on from the hall and turn up the flight (owner: the way onto the
+            // stairs from the ground floor looked wrong; the first step stopped 20 cm short of the wall).
+            float wallZ = Z1 - T;
+            float[] reach = { 0.3f, 0.12f };
             for (int i = 0; i < steps; i++)
             {
-                float za = StairBottomZ - i * run, zb = za - run, top = F0 + (i + 1) * rise;
-                s.mb.Box(inside, new Vector3((StairX0 + StairX1) / 2f, (F0 + top) / 2f, (za + zb) / 2f), new Vector3(StairX1 - StairX0, top - F0, run), 0b111111, pal.boards);
+                float za = i == 0 ? wallZ : StairBottomZ - i * run, zb = StairBottomZ - (i + 1) * run, top = F0 + (i + 1) * rise;
+                float x1 = i < reach.Length ? StairX1 + reach[i] : StairX1;
+                s.mb.Box(inside, new Vector3((StairX0 + x1) / 2f, (F0 + top) / 2f, (za + zb) / 2f), new Vector3(x1 - StairX0, top - F0, za - zb), 0b111111, pal.boards);
+                if (i >= reach.Length) continue;
+                float r = (za - zb) / 2f;
+                s.mb.Cylinder(inside, new Vector3(x1, F0, (za + zb) / 2f), r, top - F0, 20, true, pal.boards);
+                s.Collider(new Vector3((StairX0 + x1 + r) / 2f, (F0 + top) / 2f, (za + zb) / 2f), new Vector3(x1 + r - StairX0, top - F0, za - zb));
             }
-            // Banister on the open side: posts and a rail following the pitch.
-            for (int i = 0; i <= 4; i++)
+            // A stringer along the open side hides the sawtooth of the stacked steps.
+            float Nose(float z) => F0 + (StairBottomZ - z) / run * rise;
+            Vector3 sa = new Vector3(StairX1 + 0.015f, Nose(StairBottomZ - 2f * run) - 0.16f, StairBottomZ - 2f * run);
+            Vector3 sb = new Vector3(StairX1 + 0.015f, Nose(StairTopZ) - 0.16f, StairTopZ);
+            s.mb.BoxRotated(pal.doorWood, (sa + sb) / 2f, new Vector3(0.03f, 0.3f, Vector3.Distance(sa, sb)), Quaternion.LookRotation(sb - sa));
+
+            // Banister on the open side: a newel post on the third step, a baluster on every step, a rail following the
+            // pitch, and a top newel where the upstairs railing begins (owner: the old rail ran on past the top step).
+            float banA = StairBottomZ - 2.5f * run, banB = StairTopZ + 1f;
+            float RailY(float z) => Nose(z) + 0.9f;
+            float StepTop(float z) => F0 + Mathf.Clamp(Mathf.Ceil((StairBottomZ - z) / run), 1f, steps) * rise;
+            const float bx = StairX1 - 0.06f;
+            void Newel(float z, float top)
             {
-                float z = Mathf.Lerp(StairBottomZ - 0.2f, StairTopZ + 0.3f, i / 4f);
-                float stepTop = F0 + Mathf.Clamp(Mathf.Ceil((StairBottomZ - z) / run), 1f, steps) * rise;
-                s.mb.Box(pal.doorWood, new Vector3(StairX1 - 0.04f, stepTop + 0.45f, z), new Vector3(0.05f, 0.9f, 0.05f));
+                float foot = StepTop(z);
+                s.mb.Box(pal.doorWood, new Vector3(bx, (foot + top) / 2f, z), new Vector3(0.1f, top - foot, 0.1f));
+                s.mb.Box(pal.doorWood, new Vector3(bx, top + 0.03f, z), new Vector3(0.14f, 0.06f, 0.14f));
             }
-            float len = Mathf.Sqrt(Mathf.Pow(StairBottomZ - StairTopZ, 2f) + Storey * Storey);
-            float pitch = Mathf.Atan2(Storey, StairBottomZ - StairTopZ) * Mathf.Rad2Deg;
-            s.mb.BoxRotated(pal.doorWood, new Vector3(StairX1 - 0.04f, F0 + Storey / 2f + 0.95f, (StairBottomZ + StairTopZ) / 2f), new Vector3(0.06f, 0.06f, len),
-                            Quaternion.Euler(pitch, 0f, 0f));
+            Newel(banA, RailY(banA) + 0.1f);
+            Newel(banB, F1 + 0.98f);
+            for (int i = 3; ; i++)
+            {
+                float z = StairBottomZ - (i + 0.5f) * run;
+                if (z < banB + 0.1f) break;
+                float foot = StepTop(z), top = RailY(z);
+                s.mb.Box(pal.doorWood, new Vector3(bx, (foot + top) / 2f, z), new Vector3(0.035f, top - foot, 0.035f));
+            }
+            Vector3 ra = new Vector3(bx, RailY(banA), banA), rb = new Vector3(bx, RailY(banB), banB);
+            s.mb.BoxRotated(pal.doorWood, (ra + rb) / 2f, new Vector3(0.07f, 0.06f, Vector3.Distance(ra, rb)), Quaternion.LookRotation(rb - ra));
+            // It holds Daniel on the flight (it is a thin wall on the stairs' edge; nothing in the hall is behind it).
+            s.Collider(new Vector3(bx, (StepTop(banA) + RailY(banB)) / 2f, (banA + banB) / 2f), new Vector3(0.08f, RailY(banB) - StepTop(banA), banA - banB));
             // Railing round the stairwell upstairs. The first metre on the landing side stays open: that is the way off.
             float ry = F1;
             s.Box(pal.doorWood, new Vector3(StairX1 + 0.03f, ry + 0.95f, (StairTopZ + 1f + OpeningZ1) / 2f), new Vector3(0.06f, 0.06f, OpeningZ1 - StairTopZ - 1f), false);
@@ -193,17 +223,54 @@ namespace Echoes.World
 
         // ------------------------------------------------------------------ outside
 
+        /// <summary>
+        /// The front porch (owner: make the entrance look good): a deck the width of the door bay with two full-width
+        /// steps, a railing either side, two posts under a little roof, a lantern by the door (dead: no power), a frame
+        /// and a transom round the door, and solar path lights that still glow in a blackout.
+        /// </summary>
         static void Porch(Palette pal, Transform root)
         {
             var s = new Solid();
             float y0 = DistrictGenerator.Curb;
-            const float px1 = -67.1f;
-            s.mb.Box(pal.trimStone, new Vector3((X1 + px1) / 2f, (y0 + F0) / 2f, DoorZ), new Vector3(px1 - X1, F0 - y0, 3.4f), 0b111111, pal.boards);
-            s.Collider(new Vector3((X1 + px1) / 2f, (y0 + F0) / 2f, DoorZ), new Vector3(px1 - X1, F0 - y0, 3.4f));
-            s.Box(pal.trimStone, new Vector3(px1 + 0.18f, (y0 + F0 - 0.175f) / 2f + 0.001f, DoorZ), new Vector3(0.36f, F0 - 0.175f - y0, 1.6f));
-            foreach (float z in new[] { DoorZ - 1.6f, DoorZ + 1.6f })
-                s.Box(pal.trimStone, new Vector3(px1 + 0.1f, F0 + 1.3f, z), new Vector3(0.12f, 2.6f, 0.12f));
-            s.mb.Box(pal.roof, new Vector3((X1 + px1) / 2f + 0.1f, F0 + 2.66f, DoorZ), new Vector3(px1 - X1 + 0.4f, 0.12f, 3.8f));
+            const float px1 = -67f, half = 1.8f;
+            float step = (F0 - y0) / 2f;
+            s.mb.Box(pal.trimStone, new Vector3((X1 + px1) / 2f, (y0 + F0) / 2f, DoorZ), new Vector3(px1 - X1, F0 - y0, half * 2f), 0b111111, pal.boards);
+            s.Collider(new Vector3((X1 + px1) / 2f, (y0 + F0) / 2f, DoorZ), new Vector3(px1 - X1, F0 - y0, half * 2f));
+            // Two steps across the whole front.
+            s.mb.Box(pal.trimStone, new Vector3(px1 + 0.17f, y0 + step / 2f, DoorZ), new Vector3(0.34f, step, half * 2f - 0.6f), 0b111111, pal.boards);
+            s.Collider(new Vector3(px1 + 0.17f, y0 + step / 2f, DoorZ), new Vector3(0.34f, step, half * 2f - 0.6f));
+            // Railings on the two open sides of the deck, and in front either side of the steps.
+            void Rail(Vector3 a, Vector3 b)
+            {
+                Vector3 d = b - a;
+                float len = d.magnitude;
+                var rot = Quaternion.LookRotation(d / len);
+                s.mb.BoxRotated(pal.trimStone, (a + b) / 2f + Vector3.up * 0.9f, new Vector3(0.07f, 0.06f, len), rot);
+                s.mb.BoxRotated(pal.trimStone, (a + b) / 2f + Vector3.up * 0.12f, new Vector3(0.06f, 0.05f, len), rot);
+                for (float u = 0.12f; u < len - 0.05f; u += 0.13f)
+                {
+                    Vector3 p = a + d / len * u;
+                    s.mb.Box(pal.trimStone, p + Vector3.up * 0.5f, new Vector3(0.03f, 0.78f, 0.03f));
+                }
+                s.Collider((a + b) / 2f + Vector3.up * 0.5f, new Vector3(Mathf.Abs(d.x) + 0.08f, 1f, Mathf.Abs(d.z) + 0.08f));
+            }
+            Rail(new Vector3(X1 + 0.05f, F0, DoorZ - half + 0.06f), new Vector3(px1 - 0.06f, F0, DoorZ - half + 0.06f));
+            Rail(new Vector3(X1 + 0.05f, F0, DoorZ + half - 0.06f), new Vector3(px1 - 0.06f, F0, DoorZ + half - 0.06f));
+            Rail(new Vector3(px1 - 0.06f, F0, DoorZ - half + 0.06f), new Vector3(px1 - 0.06f, F0, DoorZ - 0.85f));
+            Rail(new Vector3(px1 - 0.06f, F0, DoorZ + 0.85f), new Vector3(px1 - 0.06f, F0, DoorZ + half - 0.06f));
+            // Posts and the porch roof, sloping a little toward the alley.
+            foreach (float z in new[] { DoorZ - half + 0.06f, DoorZ + half - 0.06f })
+                s.Box(pal.trimStone, new Vector3(px1 - 0.06f, F0 + 1.3f, z), new Vector3(0.14f, 2.6f, 0.14f));
+            s.mb.BoxRotated(pal.roof, new Vector3((X1 + px1) / 2f + 0.15f, F0 + 2.68f, DoorZ), new Vector3(px1 - X1 + 0.5f, 0.1f, half * 2f + 0.4f), Quaternion.Euler(0f, 0f, -8f));
+            s.mb.Box(pal.trimStone, new Vector3(px1 - 0.06f, F0 + 2.56f, DoorZ), new Vector3(0.16f, 0.18f, half * 2f));        // beam
+            // The door bay: a painted frame, a transom light over the door, a lantern on the wall (dead: no power).
+            float fx = X1 + 0.02f;
+            s.mb.Box(pal.trimStone, new Vector3(fx, F0 + 1.1f, DoorZ - 0.56f), new Vector3(0.05f, 2.2f, 0.1f));
+            s.mb.Box(pal.trimStone, new Vector3(fx, F0 + 1.1f, DoorZ + 0.56f), new Vector3(0.05f, 2.2f, 0.1f));
+            s.mb.Box(pal.trimStone, new Vector3(fx, F0 + 2.55f, DoorZ), new Vector3(0.05f, 0.1f, 1.22f));
+            s.mb.Box(pal.glassDark, new Vector3(X1 - 0.02f, F0 + 2.3f, DoorZ), new Vector3(0.02f, 0.38f, 1f));
+            s.mb.Box(pal.metalDark, new Vector3(X1 + 0.1f, F0 + 1.95f, DoorZ - 0.85f), new Vector3(0.16f, 0.32f, 0.16f));
+            s.mb.Box(pal.lampGlass, new Vector3(X1 + 0.1f, F0 + 1.93f, DoorZ - 0.85f), new Vector3(0.12f, 0.22f, 0.12f));
             s.Build("HousePorch", root);
         }
 
@@ -226,7 +293,8 @@ namespace Echoes.World
             }
             Pickets(LotZ0, gate0);
             Pickets(gate1, LotZ1);
-            s.mb.BoxRotated(pal.trimStone, new Vector3(fx - 0.5f, y + 0.5f, gate1 - 0.15f), new Vector3(1.05f, 0.95f, 0.03f), Quaternion.Euler(0f, -75f, 0f));
+            // The gate leaf swung right back against the inside of the fence, clear of the way in.
+            s.mb.Box(pal.trimStone, new Vector3(fx - 0.06f, y + 0.5f, gate1 + 0.55f), new Vector3(0.03f, 0.95f, 1.05f));
 
             // Back: a tall board fence on the back alley with a gate.
             const float bx = LotX0 + 0.05f, b0 = BackDoorZ - 0.6f, b1 = BackDoorZ + 0.6f;
@@ -237,7 +305,7 @@ namespace Echoes.World
             }
             Boards(LotZ0, b0);
             Boards(b1, LotZ1);
-            s.mb.BoxRotated(pal.boards, new Vector3(bx + 0.55f, y + 0.9f, b0 + 0.25f), new Vector3(1.15f, 1.75f, 0.04f), Quaternion.Euler(0f, 70f, 0f));
+            // The back gate leaf is HouseSequence's: bolted shut until the raid, so the back alley (and the subway) wait for the house.
 
             // A child's bike on its side by the porch, a trash can by the back door.
             s.mb.Cylinder(pal.metalDark, new Vector3(-67.6f, y + 0.02f, -64.2f), 0.3f, 0.04f, 18, true);

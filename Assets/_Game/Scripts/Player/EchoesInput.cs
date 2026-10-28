@@ -22,6 +22,7 @@ namespace Echoes.Player
         public bool JumpPressed => Acts && jump.WasPressedThisFrame();
         public float Lean => Acts ? (leanRight.IsPressed() ? 1f : 0f) - (leanLeft.IsPressed() ? 1f : 0f) : 0f;
         public bool InteractPressed => Acts && interact.WasPressedThisFrame();
+        public bool InteractHeld => Acts && interact.IsPressed();
         public bool FirePressed => Acts && fire.WasPressedThisFrame();
         public bool FireHeld => Acts && fire.IsPressed();
         public bool AimHeld => Acts && aim.IsPressed();
@@ -33,9 +34,14 @@ namespace Echoes.Player
         public bool HealPressed => Acts && heal.WasPressedThisFrame();
 
         public bool InputLocked { get; set; }
+        /// <summary>The pause menu is open: nothing reaches the player (set by UI.PauseMenu).</summary>
+        public static bool Paused { get; set; }
         /// <summary>Cutscenes where Daniel can still look around (seated in the ambulance): no movement, no actions.</summary>
         public bool LookOnly { get; set; }
-        bool Acts => !LookOnly && !InputLocked;
+        bool Acts => !LookOnly && !InputLocked && !Paused;
+        /// <summary>Fire and aim while manning a mounted gun (8d): they work under LookOnly, which keeps everything else off.</summary>
+        public bool GunnerFireHeld => !InputLocked && !Paused && fire.IsPressed();
+        public bool GunnerAimHeld => !InputLocked && !Paused && aim.IsPressed();
 
         void Awake()
         {
@@ -86,7 +92,7 @@ namespace Echoes.Player
 
         void Update()
         {
-            if (InputLocked)
+            if (InputLocked || Paused)
             {
                 Move = Vector2.zero;
                 LookDelta = Vector2.zero;

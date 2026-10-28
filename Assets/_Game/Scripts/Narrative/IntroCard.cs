@@ -9,6 +9,7 @@ namespace Echoes.Narrative
     /// <summary>
     /// The black screen before the footage: on the very first start the subtitle language is chosen, then the date and
     /// the one rule of the night (8 seconds; owner: shorter, the Voss quote dropped). Space, Enter or a click skips ahead.
+    /// Between the two, once per launch, the title screen (<see cref="PauseMenu.OpenTitle"/>).
     /// </summary>
     public static class IntroCard
     {
@@ -40,6 +41,16 @@ namespace Echoes.Narrative
                 }
                 hud.SetCard("", 0f);
                 yield return new WaitForSeconds(0.5f);
+            }
+
+            // 8f: the title screen, once per launch (a restart from the menu goes straight to the card).
+            var menu = PauseMenu.Instance;
+            if (menu != null && !PauseMenu.TitleShown)
+            {
+                yield return null; // the menu builds itself in Start
+                menu.OpenTitle();
+                while (menu.IsOpen) yield return null;
+                yield return new WaitForSeconds(0.3f);
             }
 
             string body = GameSettings.Pick(BodyEn, BodyTr);

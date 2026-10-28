@@ -21,6 +21,8 @@ namespace Echoes.Combat
     public class Health : MonoBehaviour
     {
         public float maxHealth = 100f;
+        [Tooltip("PlayerMelee skips this body (story props such as the passed-out reveller: owner, after the party).")]
+        public bool meleeImmune;
         public float Current { get; private set; }
         public bool IsDead { get; private set; }
         public float Fraction => Current / maxHealth;

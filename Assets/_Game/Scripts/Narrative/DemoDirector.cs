@@ -17,10 +17,11 @@ namespace Echoes.Narrative
     /// </summary>
     [RequireComponent(typeof(ColdOpenSequence), typeof(CrashSiteSequence), typeof(GasStationSequence))]
     [RequireComponent(typeof(AlleySequence), typeof(SchoolSequence), typeof(HouseSequence))] // RequireComponent takes at most three types
+    [RequireComponent(typeof(MetroSequence), typeof(PartySequence))]
     public class DemoDirector : MonoBehaviour
     {
         // New entries go at the end: the field is serialized as an int.
-        public enum StartAt { ColdOpen, CrashSite, GasStation, Sandbox, Alleys, School }
+        public enum StartAt { ColdOpen, CrashSite, GasStation, Sandbox, Alleys, School, Metro, Party }
 
         public static DemoDirector Instance { get; private set; }
 
@@ -33,6 +34,8 @@ namespace Echoes.Narrative
         GasStationSequence gasStation;
         AlleySequence alleys;
         HouseSequence house;
+        MetroSequence metro;
+        PartySequence party;
         SchoolSequence school;
         Coroutine running;
 
@@ -45,6 +48,8 @@ namespace Echoes.Narrative
             gasStation = GetComponent<GasStationSequence>();
             alleys = GetComponent<AlleySequence>();
             house = GetComponent<HouseSequence>();
+            metro = GetComponent<MetroSequence>();
+            party = GetComponent<PartySequence>();
             school = GetComponent<SchoolSequence>();
         }
 
@@ -64,8 +69,12 @@ namespace Echoes.Narrative
             alleys.Setup();   // the alleys' pickups; their chase is gone (8b: the house replaces it)
             house.Setup();
             StartCoroutine(house.Play(gasStation));
+            metro.Setup();
+            StartCoroutine(metro.Play(house));
+            party.Setup();
+            StartCoroutine(party.Play(metro));
             school.Setup();
-            StartCoroutine(school.Play());
+            StartCoroutine(school.Play(party));
             StartCoroutine(SaveCheckpoints());
 
             // Back from a death: the last checkpoint, as things stood then.
@@ -76,7 +85,9 @@ namespace Echoes.Narrative
             }
             if (startAt == StartAt.GasStation) { StartFree(CheckpointStage.GasStation); Save(CheckpointStage.GasStation); yield break; }
             if (startAt == StartAt.Alleys) { StartFree(CheckpointStage.Alleys); Save(CheckpointStage.Alleys); yield break; }
-            if (startAt == StartAt.School) { StartFree(CheckpointStage.School); Save(CheckpointStage.School); yield break; }
+            if (startAt == StartAt.School) { StartFree(CheckpointStage.School); RestoreStages(CheckpointStage.School); Save(CheckpointStage.School); yield break; }
+            if (startAt == StartAt.Metro) { StartFree(CheckpointStage.Metro); RestoreStages(CheckpointStage.Metro); Save(CheckpointStage.Metro); yield break; }
+            if (startAt == StartAt.Party) { StartFree(CheckpointStage.Party); RestoreStages(CheckpointStage.Party); Save(CheckpointStage.Party); yield break; }
             if (startAt == StartAt.CrashSite) coldOpen.Skip();
             running = StartCoroutine(Flow(startAt == StartAt.ColdOpen));
         }
@@ -107,6 +118,9 @@ namespace Echoes.Narrative
                     if (crashSite.Resolved && !crashSite.Busy && p.transform.position.z < -50f) Save(CheckpointStage.GasStation);
                     if (gasStation.Done) Save(CheckpointStage.Alleys);
                     if (house.Done) Save(CheckpointStage.House);
+                    if (metro.Reached) Save(CheckpointStage.Metro);
+                    if (party.Started) Save(CheckpointStage.Party);
+                    if (party.OnTurret) Save(CheckpointStage.Turret);
                     if (school.Reached) Save(CheckpointStage.School);
                 }
                 yield return null;
@@ -146,7 +160,7 @@ namespace Echoes.Narrative
             if (clock != null && t != System.DateTime.MinValue) clock.JumpTo(t.Hour, t.Minute, t.Second);
             crashSite.RestoreAfterCheckpoint();
             if (stage >= CheckpointStage.Alleys) gasStation.RestoreAfterCheckpoint();
-            if (stage >= CheckpointStage.House) house.RestoreAfterCheckpoint();
+            RestoreStages(stage);
 
             var p = GameObject.FindGameObjectWithTag("Player");
             if (p != null)
@@ -165,6 +179,15 @@ namespace Echoes.Narrative
             yield return ColdOpenSequence.Fade(1f, 0f, 1.2f);
         }
 
+        /// <summary>Puts the story sequences of the stages before `stage` back as they ended.</summary>
+        void RestoreStages(CheckpointStage stage)
+        {
+            if (stage >= CheckpointStage.House) house.RestoreAfterCheckpoint();
+            if (stage >= CheckpointStage.Party) metro.RestoreDone();
+            else if (stage >= CheckpointStage.Metro) metro.RestoreAfterCheckpoint();
+            if (stage >= CheckpointStage.Party) party.RestoreAfterCheckpoint(stage);
+        }
+
         /// <summary>Starts at a stage without its lead-up (checkpoint restarts and test starts): the crash has happened, Luis sits by the wreck.</summary>
         void StartFree(CheckpointStage stage)
         {
@@ -175,6 +198,9 @@ namespace Echoes.Narrative
             {
                 case CheckpointStage.Alleys: pos = new Vector3(-43.5f, DistrictGenerator.Curb + 0.05f, -74.5f); yaw = 270f; objective = "Get home to Mia"; break;
                 case CheckpointStage.House: pos = new Vector3(-82f, DistrictGenerator.Curb + 0.05f, -58f); yaw = 0f; objective = "The school - north up the back alley"; break;
+                case CheckpointStage.Metro: pos = MetroBuilder.HallStart + Vector3.up * 0.05f; yaw = 0f; objective = "The school - through the subway, Kessler St"; break;
+                case CheckpointStage.Party: pos = new Vector3(-97.8f, DistrictGenerator.Curb + 0.05f, -9.9f); yaw = 90f; objective = "Through the party - the school door"; break;
+                case CheckpointStage.Turret: pos = new Vector3(-88.4f, DistrictGenerator.Curb + 0.05f, -8.2f); yaw = 180f; objective = "Hold them off"; break;
                 case CheckpointStage.School: pos = new Vector3(-82f, DistrictGenerator.Curb + 0.05f, -20f); yaw = 0f; objective = "Find Mia - the school"; break;
                 default: pos = new Vector3(-2f, 0.05f, -45f); yaw = 180f; objective = "Get home to Mia - south on Harlow"; break;
             }

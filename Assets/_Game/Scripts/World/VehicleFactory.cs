@@ -340,16 +340,22 @@ namespace Echoes.World
         /// A black pickup with a welded steel ram plate (a crude grin painted on it), off-road tyres and a roof light bar.
         /// No one inside is visible: the glass is dark.
         /// </summary>
-        public static VehicleRig RamTruck(Transform parent)
+        public static VehicleRig RamTruck(Transform parent) => Pickup(parent, "RamTruck", new Color(0.025f, 0.025f, 0.028f), true);
+
+        /// <summary>
+        /// The ram truck's body in any paint, with or without the ram plate (8d: the Smilers' pickup in the school yard
+        /// carries the machine gun, PickupTurret). The bed floor is 1.3 m up, between z −2.7 and −1.2.
+        /// </summary>
+        public static VehicleRig Pickup(Transform parent, string name, Color paintColor, bool ram)
         {
-            var root = new GameObject("RamTruck");
+            var root = new GameObject(name);
             root.transform.SetParent(parent, false);
             var rig = root.AddComponent<VehicleRig>();
             var body = new GameObject("Body").transform;
             body.SetParent(root.transform, false);
             rig.body = body;
 
-            var paint = L(0.025f, 0.025f, 0.028f, 0.3f);
+            var paint = L(paintColor.r, paintColor.g, paintColor.b, 0.3f);
             var steel = L(0.16f, 0.13f, 0.11f, 0.3f, 0.6f);
             var dark = L(0.015f, 0.015f, 0.015f, 0.3f);
             var glass = L(0.01f, 0.011f, 0.013f, 0.92f);
@@ -370,18 +376,22 @@ namespace Echoes.World
             }
             mb.Box(paint, new Vector3(0f, 1.45f, -2.75f), new Vector3(2.0f, 0.32f, 0.06f));
             // Ram plate on struts, with a grin daubed on it.
-            mb.BoxRotated(steel, new Vector3(0f, 0.95f, 2.98f), new Vector3(2.15f, 0.85f, 0.08f), Quaternion.Euler(14f, 0f, 0f));
-            for (int s = -1; s <= 1; s += 2)
-                mb.Box(steel, new Vector3(s * 0.55f, 0.9f, 2.8f), new Vector3(0.1f, 0.12f, 0.4f));
-            Quaternion plate = Quaternion.Euler(14f, 0f, 0f);
-            for (int k = 0; k < 9; k++)
+            if (ram)
             {
-                float u = (k - 4) / 4f;
-                Vector3 p = new Vector3(u * 0.7f, 0.95f - 0.18f * (1f - u * u), 3.03f);
-                mb.BoxRotated(chalk, p, new Vector3(0.18f, 0.035f, 0.01f), plate * Quaternion.Euler(0f, 0f, -u * 24f));
+                mb.BoxRotated(steel, new Vector3(0f, 0.95f, 2.98f), new Vector3(2.15f, 0.85f, 0.08f), Quaternion.Euler(14f, 0f, 0f));
+                for (int s = -1; s <= 1; s += 2)
+                    mb.Box(steel, new Vector3(s * 0.55f, 0.9f, 2.8f), new Vector3(0.1f, 0.12f, 0.4f));
+                Quaternion plate = Quaternion.Euler(14f, 0f, 0f);
+                for (int k = 0; k < 9; k++)
+                {
+                    float u = (k - 4) / 4f;
+                    Vector3 p = new Vector3(u * 0.7f, 0.95f - 0.18f * (1f - u * u), 3.03f);
+                    mb.BoxRotated(chalk, p, new Vector3(0.18f, 0.035f, 0.01f), plate * Quaternion.Euler(0f, 0f, -u * 24f));
+                }
+                mb.Box(chalk, new Vector3(-0.35f, 1.2f, 3.06f), new Vector3(0.06f, 0.1f, 0.01f));
+                mb.Box(chalk, new Vector3(0.35f, 1.2f, 3.06f), new Vector3(0.06f, 0.1f, 0.01f));
             }
-            mb.Box(chalk, new Vector3(-0.35f, 1.2f, 3.06f), new Vector3(0.06f, 0.1f, 0.01f));
-            mb.Box(chalk, new Vector3(0.35f, 1.2f, 3.06f), new Vector3(0.06f, 0.1f, 0.01f));
+            else mb.Box(steel, new Vector3(0f, 0.85f, 2.74f), new Vector3(1.9f, 0.22f, 0.12f)); // a plain bumper
             // Roll bar with a light bar.
             for (int s = -1; s <= 1; s += 2)
                 mb.Box(dark, new Vector3(s * 0.8f, 2.25f, 0.65f), new Vector3(0.05f, 0.12f, 0.05f));

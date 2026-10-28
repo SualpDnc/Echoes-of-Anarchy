@@ -12,6 +12,8 @@ namespace Echoes.Combat
         public void Hit(DamageInfo info)
         {
             if (owner == null) return;
+            // Armour (8c): no damage at all, just the clang and the brain's reaction.
+            if (owner.TryGetComponent(out Armored armour)) { armour.Hit(info); return; }
             info.amount *= multiplier;
             info.part = part;
             if (info.hitBody == null) TryGetComponent(out info.hitBody);
